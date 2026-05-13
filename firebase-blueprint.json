@@ -1,0 +1,106 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "role": { "type": "string", "enum": ["user", "admin"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "Camera product details",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "price": { "type": "number" },
+        "stock": { "type": "number" },
+        "category": { "type": "string" },
+        "brand": { "type": "string" },
+        "condition": { "type": "string", "enum": ["New", "Used"] },
+        "images": { "type": "array", "items": { "type": "string" } },
+        "specifications": { "type": "object" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "price", "category", "brand"]
+    },
+    "Category": {
+      "title": "Category",
+      "description": "Product categories",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "slug": { "type": "string" }
+      },
+      "required": ["name", "slug"]
+    },
+    "Brand": {
+      "title": "Brand",
+      "description": "Product brands",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" }
+      },
+      "required": ["name"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "Purchase transaction records",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "items": { "type": "array" },
+        "totalAmount": { "type": "number" },
+        "status": { "type": "string", "enum": ["pending", "completed", "cancelled"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "items", "totalAmount"]
+    },
+    "Review": {
+      "title": "Review",
+      "description": "Product reviews from users",
+      "type": "object",
+      "properties": {
+        "productId": { "type": "string" },
+        "userId": { "type": "string" },
+        "rating": { "type": "number" },
+        "comment": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["productId", "userId", "rating"]
+    }
+  },
+  "firestore": {
+    "users": {
+      "schema": "User",
+      "description": "Users collection"
+    },
+    "products": {
+      "schema": "Product",
+      "description": "Products collection"
+    },
+    "categories": {
+      "schema": "Category",
+      "description": "Categories collection"
+    },
+    "brands": {
+      "schema": "Brand",
+      "description": "Brands collection"
+    },
+    "transactions": {
+      "schema": "Transaction",
+      "description": "Transactions collection"
+    },
+    "reviews": {
+      "schema": "Review",
+      "description": "Reviews collection"
+    }
+  }
+}
