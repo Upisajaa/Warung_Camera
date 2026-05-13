@@ -1,71 +1,102 @@
-import { Link } from 'react-router-dom';
-import { Facebook, Instagram, Twitter, Youtube, Camera } from 'lucide-react';
+import {
+  Instagram,
+  Twitter,
+  Facebook,
+  Youtube
+} from "lucide-react";
 
 export default function Footer() {
   return (
-    <footer className="bg-dark-bg border-t border-white/10 pt-16 pb-8 px-8">
-      <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
-        <div className="col-span-1 md:col-span-1">
-          <Link to="/" className="flex items-center gap-2 mb-6">
-            <Camera className="w-6 h-6 text-gold" />
-            <div>
-              <h1 className="text-lg font-bold tracking-tighter text-white italic">Warung</h1>
-              <p className="text-[8px] font-black uppercase tracking-widest text-gold">Camera</p>
-            </div>
-          </Link>
-          <p className="text-white/40 text-[11px] uppercase tracking-widest leading-relaxed font-bold">
-            Marketplace kamera profesional dan aksesori pilihan. Kami menyediakan gear berkualitas untuk fotografer dan videografer Indonesia.
-          </p>
-        </div>
+    <footer className="bg-[#dddddd] border-t border-[#cfcfcf] mt-20">
 
-        <div>
-          <h4 className="text-white font-bold uppercase tracking-[0.3em] text-[10px] mb-6 border-b border-gold/40 pb-2 inline-block">Hubungan</h4>
-          <ul className="space-y-4 text-[10px] text-white/40 uppercase tracking-widest font-bold">
-            <li><Link to="/products" className="hover:text-gold transition-colors">Produk</Link></li>
-            <li><Link to="/products" className="hover:text-gold transition-colors">Kategori</Link></li>
-            <li><Link to="/" className="hover:text-gold transition-colors">Blog</Link></li>
-            <li><Link to="/" className="hover:text-gold transition-colors">Kontak</Link></li>
-          </ul>
-        </div>
+      <div className="max-w-7xl mx-auto px-6 py-16">
 
-        <div>
-          <h4 className="text-white font-bold uppercase tracking-[0.3em] text-[10px] mb-6 border-b border-gold/40 pb-2 inline-block">Layanan</h4>
-          <ul className="space-y-4 text-[10px] text-white/40 uppercase tracking-widest font-bold">
-            <li><Link to="/" className="hover:text-gold transition-colors">Pengiriman</Link></li>
-            <li><Link to="/" className="hover:text-gold transition-colors">Pengembalian</Link></li>
-            <li><Link to="/" className="hover:text-gold transition-colors">Garansi</Link></li>
-            <li><Link to="/" className="hover:text-gold transition-colors">Cicilan</Link></li>
-          </ul>
-        </div>
+        <div className="grid md:grid-cols-4 gap-10">
 
-        <div>
-          <h4 className="text-white font-bold uppercase tracking-[0.3em] text-[10px] mb-6 border-b border-gold/40 pb-2 inline-block">Newsletter</h4>
-          <p className="text-white/40 text-[10px] uppercase tracking-widest mb-4 font-bold">Dapatkan penawaran eksklusif dan tips fotografi.</p>
-          <form className="flex gap-2 mb-6">
-            <input 
-              type="email" 
-              placeholder="EMAIL@WARUNGCAMERA.COM" 
-              className="bg-white/5 border border-white/10 px-4 py-2 text-[10px] flex-1 focus:outline-none focus:border-gold uppercase tracking-widest"
-            />
-            <button className="bg-white text-black text-[9px] uppercase font-black px-6 py-2 hover:bg-gold transition-all">
-              Subscribe
-            </button>
-          </form>
-          <div className="flex gap-4">
-            <Instagram className="w-4 h-4 text-white/40 hover:text-gold transition-colors cursor-pointer" />
-            <Twitter className="w-4 h-4 text-white/40 hover:text-gold transition-colors cursor-pointer" />
-            <Youtube className="w-4 h-4 text-white/40 hover:text-gold transition-colors cursor-pointer" />
-            <Facebook className="w-4 h-4 text-white/40 hover:text-gold transition-colors cursor-pointer" />
+          <div>
+            <h2 className="text-3xl font-bold mb-6 text-black">
+              Warung Camera
+            </h2>
+
+            <p className="text-gray-600 leading-8">
+              Marketplace kamera profesional dan aksesoris
+              pilihan untuk fotografer dan videografer Indonesia.
+            </p>
           </div>
+
+          <div>
+            <h3 className="font-bold text-xl mb-5 text-black">
+              Hubungan
+            </h3>
+
+            <ul className="space-y-3 text-gray-600">
+              <li>Produk</li>
+              <li>Kategori</li>
+              <li>Blog</li>
+              <li>Kontak</li>
+            </ul>
+          </div>
+
+          <div>
+            <h3 className="font-bold text-xl mb-5 text-black">
+              Layanan
+            </h3>
+
+            <ul className="space-y-3 text-gray-600">
+              <li>Pengiriman</li>
+              <li>Pengembalian</li>
+              <li>Garansi</li>
+              <li>Cicilan</li>
+            </ul>
+          </div>
+
+          <div>
+
+            <h3 className="font-bold text-xl mb-5 text-black">
+              Newsletter
+            </h3>
+
+            <div className="flex gap-3 mb-6">
+
+              <input
+                type="email"
+                placeholder="Email"
+                className="flex-1 border border-gray-300 rounded-xl px-4 py-3 outline-none"
+              />
+
+              <button className="bg-black text-white px-5 rounded-xl">
+                Subscribe
+              </button>
+
+            </div>
+
+            <div className="flex gap-4 text-gray-600">
+
+              <Instagram />
+              <Twitter />
+              <Youtube />
+              <Facebook />
+
+            </div>
+          </div>
+
         </div>
-      </div>
-      <div className="max-w-7xl mx-auto pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4 text-[9px] text-white/20 uppercase tracking-[0.2em] font-bold">
-        <p>© 2026 Warung Camera. All Rights Reserved.</p>
-        <div className="flex gap-8">
-          <Link to="/" className="hover:text-white">Kebijakan Privasi</Link>
-          <Link to="/" className="hover:text-white">Syarat dan Ketentuan</Link>
+
+        <div className="border-t border-gray-200 mt-14 pt-8 text-gray-500 flex justify-between">
+
+          <p>
+            © 2026 Warung Camera. All rights reserved.
+          </p>
+
+          <div className="flex gap-6">
+            <p>Kebijakan Privasi</p>
+            <p>Syarat & Ketentuan</p>
+          </div>
+
         </div>
+
       </div>
+
     </footer>
   );
 }

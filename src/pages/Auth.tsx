@@ -1,169 +1,237 @@
-import React, { useState } from 'react';
-import { auth, db } from '../lib/firebase';
-import { 
-  signInWithPopup, 
-  GoogleAuthProvider, 
-  createUserWithEmailAndPassword, 
-  signInWithEmailAndPassword 
-} from 'firebase/auth';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
-import { useNavigate } from 'react-router-dom';
-import { Camera, Mail, Lock, User, Github } from 'lucide-react';
-import { toast } from 'react-hot-toast';
-import { motion } from 'motion/react';
+import { useState } from "react";
+import toast from "react-hot-toast";
+import { Eye, EyeOff, Mail, Lock, User } from "lucide-react";
 
 export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("admin@warungcamera.com");
+  const [password, setPassword] = useState("admin123");
   const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
 
-  const handleGoogleSignIn = async () => {
-    try {
-      const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
-      
-      const userRef = doc(db, 'users', result.user.uid);
-      const userSnap = await getDoc(userRef);
-      
-      if (!userSnap.exists()) {
-        await setDoc(userRef, {
-          uid: result.user.uid,
-          email: result.user.email,
-          displayName: result.user.displayName,
-          role: 'user',
-          createdAt: new Date().toISOString()
-        });
-      }
-      
-      toast.success('Welcome to LensCraft!');
-      navigate('/');
-    } catch (e: any) {
-      toast.error(e.message);
-    }
-  };
-
-  const handleEmailAuth = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!email || !password) {
+      toast.error("Email dan password wajib diisi");
+      return;
+    }
+
+    if (!isLogin && !name) {
+      toast.error("Nama wajib diisi");
+      return;
+    }
+
     setLoading(true);
+
+    const endpoint = isLogin
+      ? "http://localhost:3000/api/login"
+      : "http://localhost:3000/api/register";
+
+    const body = isLogin
+      ? { email, password }
+      : { name, email, password };
+
     try {
-      if (isLogin) {
-        await signInWithEmailAndPassword(auth, email, password);
-        toast.success('Log in successful');
-      } else {
-        const result = await createUserWithEmailAndPassword(auth, email, password);
-        await setDoc(doc(db, 'users', result.user.uid), {
-          uid: result.user.uid,
-          email,
-          displayName: name,
-          role: 'user',
-          createdAt: new Date().toISOString()
-        });
-        toast.success('Account created successfully');
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        toast.error(data.message || "Login gagal");
+        return;
       }
-      navigate('/');
-    } catch (e: any) {
-      toast.error(e.message);
+
+      localStorage.setItem("user", JSON.stringify(data));
+
+      toast.success("Berhasil masuk");
+
+      setTimeout(() => {
+        if (data.role === "admin") {
+          window.location.href = "/admin";
+        } else {
+          window.location.href = "/";
+        }
+      }, 500);
+    } catch (error) {
+      toast.error("Server belum aktif atau API error");
     } finally {
       setLoading(false);
     }
   };
 
+  const fillAdmin = () => {
+    setIsLogin(true);
+    setEmail("admin@warungcamera.com");
+    setPassword("admin123");
+  };
+
+  const fillUser = () => {
+    setIsLogin(true);
+    setEmail("user@warungcamera.com");
+    setPassword("user123");
+  };
+
   return (
-    <div className="min-h-[80vh] flex items-center justify-center px-6 py-12">
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md bg-dark-card border border-white/10 p-10 relative overflow-hidden"
-      >
-        <div className="flex flex-col items-center mb-10">
-          <h2 className="text-3xl font-light font-serif italic tracking-tighter text-white mb-2 uppercase">
-            {isLogin ? 'Welcome Back' : 'Create Account'}
-          </h2>
-          <p className="text-[10px] text-white/40 uppercase tracking-[0.3em]">
-            {isLogin ? 'Access your professional vault' : 'Join the elite creator network'}
-          </p>
-        </div>
-
-        <form onSubmit={handleEmailAuth} className="space-y-6">
-          {!isLogin && (
-            <div>
-              <label className="block text-[9px] font-bold uppercase tracking-[0.2em] text-white/30 mb-2 ml-1">Full Name</label>
-              <input 
-                type="text" 
-                required
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full bg-white/5 border border-white/10 px-4 py-3 text-xs focus:outline-none focus:border-gold transition-all text-white"
-                placeholder="Augustus Gloop"
-              />
-            </div>
-          )}
-          
+    <div className="min-h-screen bg-[#f5f5f5] flex items-center justify-center px-6 py-20">
+      <div className="w-full max-w-5xl bg-white rounded-[36px] shadow-xl overflow-hidden grid md:grid-cols-2">
+        <div className="hidden md:flex bg-black text-white p-10 flex-col justify-between">
           <div>
-            <label className="block text-[9px] font-bold uppercase tracking-[0.2em] text-white/30 mb-2 ml-1">Email Address</label>
-            <input 
-              type="email" 
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full bg-white/5 border border-white/10 px-4 py-3 text-xs focus:outline-none focus:border-gold transition-all text-white"
-              placeholder="curator@lenscraft.pro"
-            />
+            <h1 className="text-5xl font-bold leading-tight mb-5">
+              Warung <span className="text-red-600">Camera</span>
+            </h1>
+
+            <p className="text-gray-300 leading-8">
+              Masuk sebagai user untuk belanja kamera. Masuk sebagai admin untuk
+              mengelola dashboard, user, dan produk.
+            </p>
           </div>
 
-          <div>
-            <label className="block text-[9px] font-bold uppercase tracking-[0.2em] text-white/30 mb-2 ml-1">Secure Password</label>
-            <input 
-              type="password" 
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-white/5 border border-white/10 px-4 py-3 text-xs focus:outline-none focus:border-gold transition-all text-white"
-              placeholder="••••••••"
-            />
+          <div className="bg-white/10 rounded-3xl p-6">
+            <p className="font-bold mb-2">Akun tersedia:</p>
+            <p>Admin: admin@warungcamera.com</p>
+            <p>Password: admin123</p>
+            <br />
+            <p>User: user@warungcamera.com</p>
+            <p>Password: user123</p>
+          </div>
+        </div>
+
+        <div className="p-8 md:p-10">
+          <div className="mb-8">
+            <h2 className="text-4xl font-bold text-black mb-3">
+              {isLogin ? "Login" : "Daftar Akun"}
+            </h2>
+
+            <p className="text-gray-500">
+              {isLogin
+                ? "Masuk ke akun Warung Camera"
+                : "Buat akun baru sebagai user"}
+            </p>
           </div>
 
-          <button 
-            type="submit" 
-            disabled={loading}
-            className="w-full bg-white text-black py-4 font-bold uppercase text-[10px] tracking-[0.3em] hover:bg-gold transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-          >
-            {loading ? 'Processing...' : isLogin ? 'Enter Portal' : 'Authorize Membership'}
-          </button>
-        </form>
-
-        <div className="relative my-10 text-center text-[9px] font-bold uppercase tracking-widest text-white/20">
-          <span className="bg-dark-card px-4 relative z-10">Verification</span>
-          <div className="absolute top-1/2 left-0 w-full h-[1px] bg-white/5" />
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <button 
-            onClick={handleGoogleSignIn}
-            className="flex items-center justify-center gap-2 bg-white/5 border border-white/10 py-3 hover:bg-white/10 transition-all text-[10px] font-bold uppercase tracking-widest"
-          >
-            Google
-          </button>
-          <button className="flex items-center justify-center gap-2 bg-white/5 border border-white/10 py-3 hover:bg-white/10 transition-all text-[10px] font-bold uppercase tracking-widest">
-            GitHub
-          </button>
-        </div>
-
-        <div className="mt-8 pt-8 border-t border-white/5 text-center">
-          <p className="text-[10px] text-white/30 uppercase tracking-widest">
-            {isLogin ? "New to the collective?" : "Already a member?"}
-            <button 
-              onClick={() => setIsLogin(!isLogin)}
-              className="ml-2 text-gold font-bold hover:text-white transition-colors"
+          <div className="grid grid-cols-2 gap-3 mb-6">
+            <button
+              type="button"
+              onClick={fillAdmin}
+              className="bg-red-600 text-white rounded-full py-3 font-semibold hover:bg-red-700 transition"
             >
-              {isLogin ? 'Secure Membership' : 'Sign In'}
+              Isi Admin
             </button>
-          </p>
+
+            <button
+              type="button"
+              onClick={fillUser}
+              className="bg-gray-100 text-black rounded-full py-3 font-semibold hover:bg-gray-200 transition"
+            >
+              Isi User
+            </button>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {!isLogin && (
+              <div>
+                <label className="font-semibold text-black mb-2 block">
+                  Nama Lengkap
+                </label>
+
+                <div className="relative">
+                  <User
+                    className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
+                    size={20}
+                  />
+
+                  <input
+                    type="text"
+                    placeholder="Masukkan nama lengkap"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="w-full border border-gray-300 rounded-2xl px-12 py-4 outline-none focus:border-red-600"
+                  />
+                </div>
+              </div>
+            )}
+
+            <div>
+              <label className="font-semibold text-black mb-2 block">
+                Email
+              </label>
+
+              <div className="relative">
+                <Mail
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
+                  size={20}
+                />
+
+                <input
+                  type="email"
+                  placeholder="Masukkan email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full border border-gray-300 rounded-2xl px-12 py-4 outline-none focus:border-red-600"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="font-semibold text-black mb-2 block">
+                Password
+              </label>
+
+              <div className="relative">
+                <Lock
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
+                  size={20}
+                />
+
+                <input
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Masukkan password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full border border-gray-300 rounded-2xl px-12 py-4 pr-14 outline-none focus:border-red-600"
+                />
+
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500"
+                >
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-red-600 text-white py-4 rounded-full font-bold hover:bg-red-700 transition disabled:bg-gray-400"
+            >
+              {loading ? "Memproses..." : isLogin ? "Login" : "Daftar"}
+            </button>
+          </form>
+
+          <div className="mt-6 text-center">
+            <button
+              type="button"
+              onClick={() => setIsLogin(!isLogin)}
+              className="text-red-600 font-semibold hover:underline"
+            >
+              {isLogin
+                ? "Belum punya akun? Daftar"
+                : "Sudah punya akun? Login"}
+            </button>
+          </div>
         </div>
-      </motion.div>
+      </div>
     </div>
   );
 }
