@@ -1,35 +1,141 @@
-import { useStore } from '../store/useStore';
-import { formatPrice } from '../lib/utils';
-import { Trash2, Plus, Minus, ShoppingBag, ArrowRight } from 'lucide-react';
-import { Link } from 'react-router-dom';
-import { motion, AnimatePresence } from 'motion/react';
-import { toast } from 'react-hot-toast';
+import { useEffect, useState } from "react";
+import {
+  Trash2,
+  Plus,
+  Minus,
+  ShoppingBag,
+  ArrowRight,
+} from "lucide-react";
+
+import { Link } from "react-router-dom";
+import toast from "react-hot-toast";
+
+type CartItem = {
+  id: number;
+  name: string;
+  price: number;
+  image?: string;
+  qty: number;
+  stock?: number;
+  payment?: string;
+};
 
 export default function Cart() {
-  const { cart, removeFromCart, updateQuantity, clearCart } = useStore();
-  
-  const subtotal = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
-  const tax = subtotal * 0.11; // 11% PPN
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const savedCart = JSON.parse(localStorage.getItem("cart") || "[]");
+    setCart(savedCart);
+  }, []);
+
+  const saveCart = (newCart: CartItem[]) => {
+    setCart(newCart);
+    localStorage.setItem("cart", JSON.stringify(newCart));
+  };
+
+  const removeFromCart = (id: number) => {
+    const newCart = cart.filter((item) => item.id !== id);
+
+    saveCart(newCart);
+
+    toast.success("Produk dihapus dari keranjang");
+  };
+
+  const updateQty = (id: number, qty: number) => {
+    if (qty < 1) return;
+
+    const product = cart.find((item) => item.id === id);
+
+    if (product?.stock && qty > product.stock) {
+      toast.error("Melebihi stok produk");
+      return;
+    }
+
+    const newCart = cart.map((item) =>
+      item.id === id
+        ? {
+            ...item,
+            qty,
+          }
+        : item
+    );
+
+    saveCart(newCart);
+  };
+
+  const clearCart = () => {
+    saveCart([]);
+    toast.success("Keranjang dikosongkan");
+  };
+
+  const subtotal = cart.reduce(
+    (acc, item) => acc + Number(item.price) * item.qty,
+    0
+  );
+
+  const tax = subtotal * 0.11;
+
   const total = subtotal + tax;
 
-  const handleCheckout = () => {
-    toast.success('Checkout process started!');
-    // Simulation of transaction creation could go here
+  const checkout = async () => {
+    try {
+      setLoading(true);
+
+      const res = await fetch("http://localhost:3000/api/checkout", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          items: cart,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || data.success === false) {
+        toast.error(data.message || "Checkout gagal");
+        return;
+      }
+
+      toast.success("Checkout berhasil");
+
+      saveCart([]);
+
+      setTimeout(() => {
+        window.location.href = "/produk";
+      }, 1500);
+    } catch (error) {
+      console.log(error);
+
+      toast.error("Gagal terhubung ke server");
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (cart.length === 0) {
     return (
       <div className="max-w-7xl mx-auto px-6 py-32 text-center">
-        <div className="w-24 h-24 bg-dark-card rounded-full flex items-center justify-center mx-auto mb-8 border border-white/5">
-          <ShoppingBag className="w-10 h-10 text-white/20" />
+        <div className="w-24 h-24 bg-black rounded-full flex items-center justify-center mx-auto mb-8">
+          <ShoppingBag className="w-10 h-10 text-white/40" />
         </div>
-        <h1 className="text-4xl font-black uppercase tracking-tighter italic mb-4">Your Bag is Empty</h1>
-        <p className="text-white/40 mb-10 max-w-sm mx-auto">Looks like you haven't picked out any gear yet. Explore our latest catalog to find your next companion.</p>
-        <Link 
-          to="/products"
-          className="inline-flex items-center gap-2 bg-white text-black px-8 py-4 rounded-full font-black uppercase text-xs tracking-widest hover:bg-gold transition-all"
+
+        <h1 className="text-5xl font-black uppercase italic mb-4">
+          Keranjang Kosong
+        </h1>
+
+        <p className="text-gray-500 mb-10">
+          Belum ada produk di keranjang
+        </p>
+
+        <Link
+          to="/produk"
+          className="inline-flex items-center gap-2 bg-black text-white px-8 py-4 rounded-full font-bold uppercase"
         >
-          Explore Gear <ArrowRight className="w-4 h-4" />
+          Lihat Produk
+          <ArrowRight className="w-4 h-4" />
         </Link>
       </div>
     );
@@ -37,104 +143,147 @@ export default function Cart() {
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-12">
-      <h1 className="text-4xl md:text-5xl font-light font-serif italic tracking-tighter text-white mb-12 uppercase">
-        In Your <span className="text-gold italic font-black">Bag.</span>
+      <h1 className="text-5xl font-bold mb-12">
+        Keranjang Belanja
       </h1>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-16">
-        {/* Cart Items */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+        {/* CART */}
         <div className="lg:col-span-2 space-y-6">
-          <AnimatePresence>
-            {cart.map((item) => (
-              <motion.div 
+          {cart.map((item) => {
+            const imageUrl = item.image
+              ? `http://localhost:3000${item.image}`
+              : "https://placehold.co/100x100";
+
+            return (
+              <div
                 key={item.id}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20 }}
-                className="flex flex-col sm:flex-row gap-6 p-5 bg-dark-card border border-white/10 relative group"
+                className="bg-white rounded-3xl shadow p-6 flex gap-6"
               >
-                <div className="w-28 h-28 bg-dark-bg border border-white/5 flex-shrink-0 flex items-center justify-center p-4">
-                  <img src={item.image} alt={item.name} className="w-full h-full object-contain" />
+                <div className="w-32 h-32 bg-gray-100 rounded-2xl flex items-center justify-center p-4">
+                  <img
+                    src={imageUrl}
+                    alt={item.name}
+                    className="w-full h-full object-contain"
+                  />
                 </div>
-                
-                <div className="flex-1 flex flex-col">
-                  <div className="flex justify-between items-start mb-1">
-                    <h3 className="text-lg font-serif italic text-white tracking-tighter">{item.name}</h3>
-                    <button 
+
+                <div className="flex-1">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h2 className="text-2xl font-bold">
+                        {item.name}
+                      </h2>
+
+                      <p className="text-red-600 font-bold text-xl mt-2">
+                        Rp{" "}
+                        {Number(item.price).toLocaleString("id-ID")}
+                      </p>
+
+                      <p className="text-gray-500 mt-1">
+                        Pembayaran: {item.payment}
+                      </p>
+
+                      <p className="text-gray-500">
+                        Qty: {item.qty}
+                      </p>
+                    </div>
+
+                    <button
                       onClick={() => removeFromCart(item.id)}
-                      className="text-white/20 hover:text-white transition-colors"
+                      className="text-red-600"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Trash2 />
                     </button>
                   </div>
-                  
-                  <p className="text-sm font-mono text-gold mb-auto">{formatPrice(item.price)}</p>
-                  
-                  <div className="flex items-center justify-between mt-4">
-                    <div className="flex items-center gap-3 bg-white/5 border border-white/10 px-3 py-1.5">
-                      <button 
-                        onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                        className="text-white/40 hover:text-white transition-colors"
+
+                  <div className="flex items-center justify-between mt-6">
+                    <div className="flex items-center gap-4 bg-gray-100 px-4 py-2 rounded-xl">
+                      <button
+                        onClick={() =>
+                          updateQty(item.id, item.qty - 1)
+                        }
                       >
-                        <Minus className="w-3 h-3" />
+                        <Minus />
                       </button>
-                      <span className="text-[10px] font-bold w-4 text-center">{item.quantity}</span>
-                      <button 
-                        onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                        className="text-white/40 hover:text-white transition-colors"
+
+                      <span className="font-bold text-lg">
+                        {item.qty}
+                      </span>
+
+                      <button
+                        onClick={() =>
+                          updateQty(item.id, item.qty + 1)
+                        }
                       >
-                        <Plus className="w-3 h-3" />
+                        <Plus />
                       </button>
                     </div>
-                    <span className="text-[10px] font-bold uppercase text-white/30 tracking-[0.2em]">Total: {formatPrice(item.price * item.quantity)}</span>
+
+                    <h2 className="text-2xl font-bold">
+                      Rp{" "}
+                      {(
+                        Number(item.price) * item.qty
+                      ).toLocaleString("id-ID")}
+                    </h2>
                   </div>
                 </div>
-              </motion.div>
-            ))}
-          </AnimatePresence>
-          
-          <button 
+              </div>
+            );
+          })}
+
+          <button
             onClick={clearCart}
-            className="text-[9px] font-bold uppercase tracking-[0.3em] text-white/20 hover:text-white transition-colors mt-4"
+            className="text-red-600 font-bold uppercase"
           >
-            Clear bag contents
+            Kosongkan Keranjang
           </button>
         </div>
 
-        {/* Order Summary */}
-        <div className="lg:col-span-1">
-          <div className="bg-dark-surface border border-white/10 p-8 sticky top-32">
-            <h2 className="text-xl font-serif italic tracking-tighter text-white mb-8 border-b border-white/5 pb-6 uppercase">Shipment Detail</h2>
-            
-            <div className="space-y-4 mb-8">
-              <div className="flex justify-between text-[10px] uppercase tracking-widest font-bold">
-                <span className="text-white/40">Subtotal</span>
-                <span>{formatPrice(subtotal)}</span>
+        {/* SUMMARY */}
+        <div>
+          <div className="bg-white rounded-3xl shadow p-8 sticky top-32">
+            <h2 className="text-3xl font-bold mb-8">
+              Ringkasan Pesanan
+            </h2>
+
+            <div className="space-y-5">
+              <div className="flex justify-between">
+                <span>Subtotal</span>
+
+                <span>
+                  Rp {subtotal.toLocaleString("id-ID")}
+                </span>
               </div>
-              <div className="flex justify-between text-[10px] uppercase tracking-widest font-bold">
-                <span className="text-white/40">Tax (11%)</span>
-                <span>{formatPrice(tax)}</span>
+
+              <div className="flex justify-between">
+                <span>PPN 11%</span>
+
+                <span>
+                  Rp {tax.toLocaleString("id-ID")}
+                </span>
               </div>
-              <div className="flex justify-between text-[10px] uppercase tracking-widest font-bold">
-                <span className="text-white/40">Express Courier</span>
-                <span className="text-gold">COMPLIMENTARY</span>
-              </div>
-              <div className="pt-6 border-t border-white/5 flex justify-between items-end">
-                <span className="text-[11px] font-bold uppercase tracking-[0.4em] text-white/60">Grand Total</span>
-                <span className="text-2xl font-mono text-gold">{formatPrice(total)}</span>
+
+              <div className="border-t pt-5 flex justify-between items-center">
+                <span className="font-bold text-xl">
+                  Total
+                </span>
+
+                <span className="text-3xl text-red-600 font-bold">
+                  Rp {total.toLocaleString("id-ID")}
+                </span>
               </div>
             </div>
 
-            <button 
-              onClick={handleCheckout}
-              className="w-full bg-white text-black py-4 font-bold uppercase text-[10px] tracking-[0.3em] hover:bg-gold transition-all flex items-center justify-center gap-3"
+            <button
+              onClick={checkout}
+              disabled={loading}
+              className="w-full bg-black text-white py-4 rounded-2xl font-bold mt-8 hover:bg-red-600 transition"
             >
-              Confirm Order
+              {loading
+                ? "Memproses..."
+                : "Konfirmasi Pesanan"}
             </button>
-            
-            <p className="mt-6 text-[9px] text-white/20 uppercase tracking-[0.2em] text-center">
-              Global shipping insurance applied automatically.
-            </p>
           </div>
         </div>
       </div>

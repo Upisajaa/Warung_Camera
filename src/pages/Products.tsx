@@ -1,58 +1,82 @@
-import { useEffect, useState } from "react";
-import { Search, Heart, Star } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Search, ShoppingCart } from "lucide-react";
+import { Link } from "react-router-dom";
 
 type Product = {
   id: number;
   name: string;
-  description?: string;
-  price: number | string;
+  price: number;
+  stock: number;
   image?: string;
-  rating?: number | string;
-  category?: {
-    id: number;
-    name: string;
-  };
+  brand?: string;
+  category?: string;
+  condition?: string;
 };
-
-const categories = ["All", "DSLR", "Mirrorless", "Action Cam", "Drone", "Lensa", "Aksesoris"];
 
 export default function Products() {
   const [products, setProducts] = useState<Product[]>([]);
-  const [activeCategory, setActiveCategory] = useState("All");
   const [search, setSearch] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("All");
 
   useEffect(() => {
     fetch("http://localhost:3000/api/products")
       .then((res) => res.json())
       .then((data) => {
         setProducts(Array.isArray(data) ? data : []);
+      })
+      .catch((err) => {
+        console.log(err);
       });
   }, []);
 
-  const filteredProducts = products.filter((product) => {
-    const matchCategory =
-      activeCategory === "All" || product.category?.name === activeCategory;
+  const categories = [
+    "All",
+    "DSLR",
+    "Mirrorless",
+    "Action Cam",
+    "Drone",
+    "Lensa",
+    "Aksesoris",
+  ];
 
-    const matchSearch = product.name
-      .toLowerCase()
-      .includes(search.toLowerCase());
+  const filteredProducts = useMemo(() => {
+    return products.filter((product) => {
+      const matchSearch = product.name
+        .toLowerCase()
+        .includes(search.toLowerCase());
 
-    return matchCategory && matchSearch;
-  });
+      const matchCategory =
+        selectedCategory === "All"
+          ? true
+          : product.category === selectedCategory;
+
+      const matchStock = Number(product.stock) > 0;
+
+      return matchSearch && matchCategory && matchStock;
+    });
+  }, [products, search, selectedCategory]);
 
   return (
-    <div className="bg-[#f5f5f5] min-h-screen text-black">
-      <section className="max-w-7xl mx-auto px-6 py-16">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-10">
+    <div className="min-h-screen bg-[#f5f5f5] px-6 py-12">
+      <div className="max-w-7xl mx-auto">
+
+        {/* HEADER */}
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 mb-10">
           <div>
-            <h1 className="text-5xl font-bold mb-3">Produk Kamera</h1>
-            <p className="text-gray-600">Produk langsung dari database MySQL</p>
+            <h1 className="text-6xl font-bold mb-3">
+              Produk Kamera
+            </h1>
+
+            <p className="text-gray-600 text-xl">
+              Produk langsung dari database MySQL
+            </p>
           </div>
 
-          <div className="relative w-full md:w-96">
+          {/* SEARCH */}
+          <div className="relative">
             <Search
               className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
-              size={20}
+              size={22}
             />
 
             <input
@@ -60,20 +84,21 @@ export default function Products() {
               placeholder="Cari produk..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full bg-white border border-gray-200 rounded-full py-4 pl-12 pr-5 outline-none"
+              className="w-full lg:w-[420px] border border-gray-300 rounded-full py-4 pl-14 pr-5 outline-none bg-white"
             />
           </div>
         </div>
 
+        {/* CATEGORY */}
         <div className="flex flex-wrap gap-4 mb-12">
           {categories.map((category) => (
             <button
               key={category}
-              onClick={() => setActiveCategory(category)}
-              className={`px-6 py-3 rounded-full font-semibold transition ${
-                activeCategory === category
+              onClick={() => setSelectedCategory(category)}
+              className={`px-8 py-4 rounded-full font-semibold transition ${
+                selectedCategory === category
                   ? "bg-red-600 text-white"
-                  : "bg-white text-black hover:bg-red-600 hover:text-white"
+                  : "bg-white text-black"
               }`}
             >
               {category}
@@ -81,53 +106,88 @@ export default function Products() {
           ))}
         </div>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
-          {filteredProducts.map((product) => (
-            <div
-              key={product.id}
-              className="bg-white rounded-3xl overflow-hidden shadow hover:shadow-2xl transition"
-            >
-              <div className="relative">
-                <img
-                  src={
-                    product.image ||
-                    "https://images.unsplash.com/photo-1516035069371-29a1b244cc32"
-                  }
-                  alt={product.name}
-                  className="h-64 w-full object-cover"
-                />
+        {/* PRODUCT GRID */}
+        {filteredProducts.length > 0 ? (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {filteredProducts.map((product) => {
 
-                <button className="absolute top-4 right-4 bg-white rounded-full p-3 shadow">
-                  <Heart size={20} />
-                </button>
-              </div>
+              const imageUrl = product.image
+                ? `http://localhost:3000${product.image}`
+                : "https://placehold.co/600x400";
 
-              <div className="p-5">
-                <p className="text-sm text-gray-500 mb-2">
-                  {product.category?.name || "Kamera"}
-                </p>
+              return (
+                <div
+                  key={product.id}
+                  className="bg-white rounded-3xl overflow-hidden shadow hover:shadow-2xl transition"
+                >
+                  {/* IMAGE */}
+                  <div className="bg-gray-100 h-[280px] flex items-center justify-center p-6">
+                    <img
+                      src={imageUrl}
+                      alt={product.name}
+                      className="max-h-full object-contain"
+                    />
+                  </div>
 
-                <h3 className="font-bold text-xl mb-3">{product.name}</h3>
+                  {/* CONTENT */}
+                  <div className="p-6">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="bg-red-100 text-red-600 px-4 py-1 rounded-full text-sm font-semibold">
+                        {product.category}
+                      </span>
 
-                <div className="flex items-center gap-1 mb-4 text-yellow-500">
-                  <Star size={18} fill="currentColor" />
-                  <span className="text-black font-medium">
-                    {Number(product.rating || 5)}
-                  </span>
+                      <span className="bg-black text-white px-4 py-1 rounded-full text-sm">
+                        {product.condition}
+                      </span>
+                    </div>
+
+                    <h2 className="text-2xl font-bold mb-2">
+                      {product.name}
+                    </h2>
+
+                    <p className="text-gray-500 mb-4">
+                      {product.brand}
+                    </p>
+
+                    <div className="flex items-center justify-between mb-6">
+                      <p className="text-3xl font-bold text-red-600">
+                        Rp{" "}
+                        {Number(product.price).toLocaleString("id-ID")}
+                      </p>
+
+                      <span className="text-gray-500">
+                        Stok {product.stock}
+                      </span>
+                    </div>
+
+                    {/* BUTTON */}
+                    <div className="flex gap-3">
+
+                      <Link
+                        to={`/produk/${product.id}`}
+                        className="flex-1 bg-red-600 text-white py-3 rounded-2xl font-semibold text-center hover:bg-red-700 transition"
+                      >
+                        Lihat Detail
+                      </Link>
+
+                      <button
+                        className="w-14 h-14 bg-black text-white rounded-2xl flex items-center justify-center"
+                      >
+                        <ShoppingCart size={22} />
+                      </button>
+
+                    </div>
+                  </div>
                 </div>
-
-                <p className="text-red-600 font-bold text-xl mb-5">
-                  Rp {Number(product.price).toLocaleString("id-ID")}
-                </p>
-
-                <button className="w-full bg-red-600 text-white py-3 rounded-full hover:bg-red-700 transition">
-                  Tambah ke Keranjang
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="text-center text-gray-500 text-xl mt-20">
+            Produk tidak ditemukan.
+          </div>
+        )}
+      </div>
     </div>
   );
 }
