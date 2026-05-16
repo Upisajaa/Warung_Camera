@@ -6,6 +6,9 @@ import {
   Truck,
   Minus,
   Plus,
+  ChevronLeft,
+  ChevronRight,
+  Info,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import QRCode from "react-qr-code";
@@ -29,22 +32,29 @@ export default function ProductDetail() {
   const [qty, setQty] = useState(1);
   const [paymentMethod, setPaymentMethod] = useState("Transfer Bank");
   const [loading, setLoading] = useState(true);
+  const [activeImage, setActiveImage] = useState(0);
 
   useEffect(() => {
     fetchProduct();
   }, [id]);
 
+  const getImages = (image?: string) => {
+    if (!image) return [];
+
+    try {
+      const parsed = JSON.parse(image);
+      return Array.isArray(parsed) ? parsed : [image];
+    } catch {
+      return [image];
+    }
+  };
+
   const fetchProduct = async () => {
     try {
       const res = await fetch(`http://localhost:3000/api/products/${id}`);
       const data = await res.json();
-
-      if (data.product) {
-        setProduct(data.product);
-      } else {
-        setProduct(data);
-      }
-    } catch (error) {
+      setProduct(data.product || data);
+    } catch {
       toast.error("Gagal mengambil detail produk");
     } finally {
       setLoading(false);
@@ -56,18 +66,11 @@ export default function ProductDetail() {
   };
 
   const handleMinus = () => {
-    if (qty > 1) {
-      setQty(qty - 1);
-    }
+    if (qty > 1) setQty(qty - 1);
   };
 
   const handlePlus = () => {
     if (!product) return;
-
-    if (product.stock <= 0) {
-      toast.error("Stok habis");
-      return;
-    }
 
     if (qty < product.stock) {
       setQty(qty + 1);
@@ -79,11 +82,7 @@ export default function ProductDetail() {
   const handleAddToCart = () => {
     if (!product) return;
 
-    if (product.stock <= 0) {
-      toast.error("Stok produk habis");
-      return;
-    }
-
+    const images = getImages(product.image);
     const cart = JSON.parse(localStorage.getItem("cart") || "[]");
     const existingProduct = cart.find((item: any) => item.id === product.id);
 
@@ -94,13 +93,62 @@ export default function ProductDetail() {
         id: product.id,
         name: product.name,
         price: product.price,
-        image: product.image,
+        image: images[0] || "",
         qty,
       });
     }
 
     localStorage.setItem("cart", JSON.stringify(cart));
-    toast.success("Produk berhasil ditambahkan ke keranjang");
+    toast.success("Produk masuk keranjang");
+  };
+
+  const saveOrderToLocalStorage = (total: number) => {
+    if (!product) return;
+
+    const images = getImages(product.image);
+    const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
+    const existingOrders = JSON.parse(localStorage.getItem("orders") || "[]");
+
+    const newOrder = {
+      id: Date.now(),
+
+      buyerName: currentUser.name || "User",
+      buyerEmail: currentUser.email || "-",
+
+      productId: product.id,
+      product: product.name,
+      image: images[0] ? `http://localhost:3000${images[0]}` : "",
+
+      price: product.price,
+      qty,
+      total,
+
+      payment: paymentMethod,
+      paymentStatus: "Menunggu Pembayaran",
+
+      status: "Menunggu Diproses",
+      courier: "",
+      receipt: "",
+
+      address: "Bandung, Indonesia",
+
+      date: new Date().toLocaleDateString("id-ID", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      }),
+
+      timeline: [
+        {
+          title: "Pesanan Dibuat",
+          description: "User berhasil melakukan checkout produk.",
+          time: new Date().toLocaleString("id-ID"),
+        },
+      ],
+    };
+
+    existingOrders.unshift(newOrder);
+    localStorage.setItem("orders", JSON.stringify(existingOrders));
   };
 
   const handleCheckout = async () => {
@@ -118,11 +166,13 @@ export default function ProductDetail() {
       return;
     }
 
-    const confirmCheckout = confirm(
-      `Checkout produk ${product.name}?\n\nJumlah: ${qty}\nMetode: ${paymentMethod}\nTotal: ${formatRupiah(total)}`
-    );
-
-    if (!confirmCheckout) return;
+    if (
+      !confirm(
+        `Checkout produk ${product.name}?\n\nJumlah: ${qty}\nMetode: ${paymentMethod}\nTotal: ${formatRupiah(total)}`
+      )
+    ) {
+      return;
+    }
 
     try {
       const res = await fetch("http://localhost:3000/api/checkout", {
@@ -150,65 +200,25 @@ export default function ProductDetail() {
         return;
       }
 
+      saveOrderToLocalStorage(total);
+
       toast.success("Checkout berhasil");
 
-      if (paymentMethod === "Transfer Bank") {
-        alert(`
-PEMBAYARAN TRANSFER BANK
+      alert(`
+CHECKOUT BERHASIL
 
-Bank BCA
-No Rekening: 1234567890
-Atas Nama: Warung Camera
+Produk: ${product.name}
+Jumlah: ${qty}
+Metode: ${paymentMethod}
+Total: ${formatRupiah(total)}
 
-Total Pembayaran:
-${formatRupiah(total)}
-
-Silakan transfer sesuai nominal di atas.
-        `);
-      }
-
-      if (paymentMethod === "QRIS") {
-        alert(`
-PEMBAYARAN QRIS
-
-Silakan scan QRIS dinamis pada halaman produk.
-
-Total Pembayaran:
-${formatRupiah(total)}
-
-Setelah pembayaran berhasil, pesanan akan diproses.
-        `);
-      }
-
-      if (paymentMethod === "E-Wallet") {
-        alert(`
-PEMBAYARAN E-WALLET
-
-DANA / OVO / GOPAY
-Nomor: 08123456789
-Atas Nama: Warung Camera
-
-Total Pembayaran:
-${formatRupiah(total)}
-        `);
-      }
-
-      if (paymentMethod === "Kartu Kredit") {
-        alert(`
-PEMBAYARAN KARTU KREDIT
-
-Metode: Visa / Mastercard
-
-Total Pembayaran:
-${formatRupiah(total)}
-
-Anda akan diarahkan ke payment gateway.
-        `);
-      }
+Status: Menunggu Diproses
+Resi akan muncul setelah admin mengirim paket.
+      `);
 
       fetchProduct();
       setQty(1);
-    } catch (error) {
+    } catch {
       toast.error("Gagal terhubung ke server");
     }
   };
@@ -229,14 +239,29 @@ Anda akan diarahkan ke payment gateway.
     );
   }
 
+  const images = getImages(product.image);
   const totalPrice = product.price * qty;
+
+  const currentImage =
+    images.length > 0
+      ? `http://localhost:3000${images[activeImage]}`
+      : "https://via.placeholder.com/500";
+
+  const nextImage = () => {
+    if (images.length <= 1) return;
+    setActiveImage((prev) => (prev + 1) % images.length);
+  };
+
+  const prevImage = () => {
+    if (images.length <= 1) return;
+    setActiveImage((prev) => (prev - 1 + images.length) % images.length);
+  };
 
   const qrisValue = JSON.stringify({
     merchant: "Warung Camera",
-    transaction_id: `INV-${product.id}-${qty}-${totalPrice}`,
-    product_id: product.id,
+    invoice: `INV-${product.id}-${qty}-${totalPrice}`,
     product: product.name,
-    qty: qty,
+    qty,
     total: totalPrice,
     payment: "QRIS",
   });
@@ -244,16 +269,54 @@ Anda akan diarahkan ke payment gateway.
   return (
     <div className="min-h-screen bg-gray-100 px-6 py-16">
       <div className="max-w-7xl mx-auto bg-white rounded-3xl shadow-lg p-8 grid grid-cols-1 md:grid-cols-2 gap-12">
-        <div className="bg-gray-100 rounded-3xl flex items-center justify-center p-8">
-          <img
-            src={
-              product.image
-                ? `http://localhost:3000${product.image}`
-                : "https://via.placeholder.com/500"
-            }
-            alt={product.name}
-            className="max-h-[500px] object-contain rounded-2xl"
-          />
+        <div>
+          <div className="relative bg-gray-100 rounded-3xl flex items-center justify-center p-8 h-[560px]">
+            <img
+              src={currentImage}
+              alt={product.name}
+              className="max-h-[500px] object-contain rounded-2xl"
+            />
+
+            {images.length > 1 && (
+              <>
+                <button
+                  onClick={prevImage}
+                  className="absolute left-5 bg-white shadow p-3 rounded-full hover:bg-gray-200"
+                >
+                  <ChevronLeft size={28} />
+                </button>
+
+                <button
+                  onClick={nextImage}
+                  className="absolute right-5 bg-white shadow p-3 rounded-full hover:bg-gray-200"
+                >
+                  <ChevronRight size={28} />
+                </button>
+              </>
+            )}
+          </div>
+
+          {images.length > 1 && (
+            <div className="flex gap-3 mt-5 overflow-x-auto">
+              {images.map((img, index) => (
+                <button
+                  key={index}
+                  onClick={() => setActiveImage(index)}
+                  className={`border-2 rounded-xl p-1 ${
+                    activeImage === index
+                      ? "border-red-600"
+                      : "border-transparent"
+                  }`}
+                >
+                  <img
+                    src={`http://localhost:3000${img}`}
+                    alt={`gambar-${index}`}
+                    className="w-24 h-24 object-cover rounded-lg"
+                  />
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         <div>
@@ -269,10 +332,29 @@ Anda akan diarahkan ke payment gateway.
             {formatRupiah(product.price)}
           </h2>
 
-          <p className="text-gray-600 text-lg mb-6">
-            {product.description ||
-              "Produk kamera berkualitas untuk kebutuhan fotografi dan videografi."}
-          </p>
+          <div className="bg-red-50 border border-red-200 rounded-2xl p-4 mb-5 shadow-sm">
+          <div className="flex items-start gap-3 mb-3">
+            <div className="w-8 h-8 min-w-[32px] rounded-full bg-red-600 text-white flex items-center justify-center shadow">
+              <Info size={16} />
+            </div>
+
+            <div>
+              <h3 className="text-lg font-bold text-red-600 leading-none mb-1">
+                Keterangan Produk
+              </h3>
+
+              <p className="text-gray-500 text-xs">
+                Detail kondisi dan informasi tambahan produk
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl border border-red-100 px-4 py-3">
+            <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-line">
+              {product.description || "Tidak ada keterangan produk."}
+            </p>
+          </div>
+        </div>
 
           <div className="grid grid-cols-2 gap-4 mb-6">
             <div className="bg-gray-100 p-4 rounded-xl">
@@ -302,7 +384,7 @@ Anda akan diarahkan ke payment gateway.
 
               <button
                 onClick={handlePlus}
-                disabled={product.stock <= 0 || qty >= product.stock}
+                disabled={qty >= product.stock}
                 className="w-11 h-11 bg-gray-200 rounded-xl flex items-center justify-center hover:bg-gray-300 disabled:opacity-50"
               >
                 <Plus size={18} />
@@ -343,10 +425,6 @@ Anda akan diarahkan ke payment gateway.
                 <div>
                   <h3 className="font-bold text-2xl mb-3">QRIS Payment</h3>
 
-                  <p className="text-gray-600 mb-5">
-                    Scan QR di bawah menggunakan mobile banking atau e-wallet.
-                  </p>
-
                   <div className="bg-white border-2 rounded-3xl p-6 inline-block shadow-md">
                     <QRCode value={qrisValue} size={220} />
 
@@ -358,24 +436,9 @@ Anda akan diarahkan ke payment gateway.
                     </div>
                   </div>
 
-                  <div className="mt-5 bg-white rounded-2xl p-4 border">
-                    <div className="flex justify-between mb-2">
-                      <span>Produk</span>
-                      <span className="font-semibold">{product.name}</span>
-                    </div>
-
-                    <div className="flex justify-between mb-2">
-                      <span>Jumlah</span>
-                      <span className="font-semibold">{qty}</span>
-                    </div>
-
-                    <div className="flex justify-between">
-                      <span>Total</span>
-                      <span className="font-bold text-red-600 text-lg">
-                        {formatRupiah(totalPrice)}
-                      </span>
-                    </div>
-                  </div>
+                  <p className="mt-4 font-bold text-red-600">
+                    Total: {formatRupiah(totalPrice)}
+                  </p>
                 </div>
               )}
 
@@ -395,7 +458,7 @@ Anda akan diarahkan ke payment gateway.
                 <div>
                   <h3 className="font-bold text-xl mb-2">Kartu Kredit</h3>
                   <p>Mendukung Visa dan Mastercard.</p>
-                  <p>Pembayaran akan diproses melalui payment gateway.</p>
+                  <p>Pembayaran diproses melalui payment gateway.</p>
                   <p className="mt-3 font-bold text-red-600">
                     Total: {formatRupiah(totalPrice)}
                   </p>
@@ -432,12 +495,6 @@ Anda akan diarahkan ke payment gateway.
               Checkout
             </button>
           </div>
-
-          {product.stock <= 0 && (
-            <p className="mt-4 text-red-600 font-semibold">
-              Produk sedang habis.
-            </p>
-          )}
 
           <div className="flex items-center gap-3 mt-7 text-gray-500">
             <Truck size={22} />

@@ -3,7 +3,7 @@ import cors from "cors";
 import multer from "multer";
 import fs from "fs";
 import path from "path";
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, Role } from "@prisma/client";
 
 const app = express();
 const prisma = new PrismaClient();
@@ -15,7 +15,8 @@ if (!fs.existsSync(uploadDir)) {
 }
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 app.use("/uploads", express.static(uploadDir));
 
 const storage = multer.diskStorage({
@@ -28,14 +29,44 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage,
-  limits: { fileSize: 500 * 1024 * 1024 },
+  limits: {
+    fileSize: 500 * 1024 * 1024,
+  },
 });
+
+const formatProduct = (product: any) => ({
+  ...product,
+  price: Number(product.price),
+  rating: product.rating ? Number(product.rating) : null,
+});
+
+const getOrCreateCategory = async (name: string) => {
+  const categoryName = name || "DSLR";
+
+  let category = await prisma.category.findUnique({
+    where: {
+      name: categoryName,
+    },
+  });
+
+  if (!category) {
+    category = await prisma.category.create({
+      data: {
+        name: categoryName,
+      },
+    });
+  }
+
+  return category;
+};
 
 app.get("/", (req, res) => {
   res.send("Warung Camera API is running");
 });
 
-// REGISTER EMAIL
+/* =========================
+   REGISTER
+========================= */
 app.post("/api/register", async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -63,7 +94,7 @@ app.post("/api/register", async (req, res) => {
     if (existingUser) {
       return res.status(409).json({
         success: false,
-        message: "Email sudah terdaftar, silakan login",
+        message: "Email sudah terdaftar",
       });
     }
 
@@ -72,7 +103,7 @@ app.post("/api/register", async (req, res) => {
         name: String(name),
         email: cleanEmail,
         password: String(password),
-        role: "USER",
+        role: Role.USER,
       },
     });
 
@@ -81,8 +112,8 @@ app.post("/api/register", async (req, res) => {
       message: "Register berhasil",
       user,
     });
-  } catch (err) {
-    console.log(err);
+  } catch (error) {
+    console.log(error);
     res.status(500).json({
       success: false,
       message: "Register gagal",
@@ -90,7 +121,9 @@ app.post("/api/register", async (req, res) => {
   }
 });
 
-// LOGIN / REGISTER GOOGLE
+/* =========================
+   GOOGLE AUTH
+========================= */
 app.post("/api/google-auth", async (req, res) => {
   try {
     const { name, email } = req.body;
@@ -114,7 +147,7 @@ app.post("/api/google-auth", async (req, res) => {
           name: name || cleanEmail.split("@")[0],
           email: cleanEmail,
           password: "GOOGLE_ACCOUNT",
-          role: "USER",
+          role: Role.USER,
         },
       });
     }
@@ -124,8 +157,8 @@ app.post("/api/google-auth", async (req, res) => {
       message: "Login Google berhasil",
       user,
     });
-  } catch (err) {
-    console.log(err);
+  } catch (error) {
+    console.log(error);
     res.status(500).json({
       success: false,
       message: "Login Google gagal",
@@ -133,13 +166,17 @@ app.post("/api/google-auth", async (req, res) => {
   }
 });
 
-// LOGIN EMAIL
+/* =========================
+   LOGIN
+========================= */
 app.post("/api/login", async (req, res) => {
   try {
     const { email, password } = req.body;
 
+    const cleanEmail = String(email).toLowerCase();
+
     const user = await prisma.user.findUnique({
-      where: { email: String(email).toLowerCase() },
+      where: { email: cleanEmail },
     });
 
     if (!user) {
@@ -161,8 +198,8 @@ app.post("/api/login", async (req, res) => {
       message: "Login berhasil",
       user,
     });
-  } catch (err) {
-    console.log(err);
+  } catch (error) {
+    console.log(error);
     res.status(500).json({
       success: false,
       message: "Server error",
@@ -170,15 +207,20 @@ app.post("/api/login", async (req, res) => {
   }
 });
 
-// GET USERS
+/* =========================
+   USERS
+========================= */
 app.get("/api/users", async (req, res) => {
   try {
     const users = await prisma.user.findMany({
-      orderBy: { id: "desc" },
+      orderBy: {
+        id: "desc",
+      },
     });
 
     res.json(users);
-  } catch (err) {
+  } catch (error) {
+    console.log(error);
     res.status(500).json({
       success: false,
       message: "Gagal mengambil user",
@@ -186,15 +228,82 @@ app.get("/api/users", async (req, res) => {
   }
 });
 
-// GET PRODUCTS
+/* =========================
+   PROFILE DATABASE
+========================= */
+app.get("/api/profile/:email", async (req, res) => {
+  try {
+    const email = String(req.params.email).toLowerCase();
+
+    const user = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User tidak ditemukan",
+      });
+    }
+
+    res.json({
+      success: true,
+      user,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      success: false,
+      message: "Gagal mengambil profil",
+    });
+  }
+});
+
+app.put("/api/profile/:email", async (req, res) => {
+  try {
+    const email = String(req.params.email).toLowerCase();
+
+    const { name, phone, address, gender, image } = req.body;
+
+    const user = await prisma.user.update({
+      where: { email },
+      data: {
+        name: name || "User",
+        phone: phone || null,
+        address: address || null,
+        gender: gender || null,
+        image: image || null,
+      },
+    });
+
+    res.json({
+      success: true,
+      message: "Profil berhasil diperbarui",
+      user,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      success: false,
+      message: "Gagal update profil",
+    });
+  }
+});
+
+/* =========================
+   PRODUCTS
+========================= */
 app.get("/api/products", async (req, res) => {
   try {
     const products = await prisma.product.findMany({
-      orderBy: { id: "desc" },
+      orderBy: {
+        id: "desc",
+      },
     });
 
-    res.json(products);
-  } catch (err) {
+    res.json(products.map(formatProduct));
+  } catch (error) {
+    console.log(error);
     res.status(500).json({
       success: false,
       message: "Gagal mengambil produk",
@@ -202,7 +311,6 @@ app.get("/api/products", async (req, res) => {
   }
 });
 
-// GET PRODUCT DETAIL
 app.get("/api/products/:id", async (req, res) => {
   try {
     const id = Number(req.params.id);
@@ -220,9 +328,10 @@ app.get("/api/products/:id", async (req, res) => {
 
     res.json({
       success: true,
-      product,
+      product: formatProduct(product),
     });
-  } catch (err) {
+  } catch (error) {
+    console.log(error);
     res.status(500).json({
       success: false,
       message: "Gagal mengambil detail produk",
@@ -230,32 +339,54 @@ app.get("/api/products/:id", async (req, res) => {
   }
 });
 
-// ADD PRODUCT
-app.post("/api/products", upload.single("image"), async (req, res) => {
+app.post("/api/products", upload.array("images", 10), async (req, res) => {
   try {
-    const { name, price, stock, brand, category, condition } = req.body;
+    const {
+      name,
+      price,
+      stock,
+      brand,
+      category,
+      condition,
+      description,
+    } = req.body;
 
-    const imagePath = req.file ? `/uploads/${req.file.filename}` : "";
+    if (!name || !price || !stock) {
+      return res.status(400).json({
+        success: false,
+        message: "Nama, harga, dan stok wajib diisi",
+      });
+    }
+
+    const categoryData = await getOrCreateCategory(category || "DSLR");
+
+    const files = req.files as Express.Multer.File[];
+
+    const imagePaths = files
+      ? files.map((file) => `/uploads/${file.filename}`)
+      : [];
 
     const product = await prisma.product.create({
       data: {
-        name,
+        name: String(name),
         price: Number(price),
         stock: Number(stock),
         brand: brand || "",
         category: category || "DSLR",
         condition: condition || "NEW",
-        image: imagePath,
-        categoryId: 1,
+        description: description || "",
+        image: JSON.stringify(imagePaths),
+        categoryId: categoryData.id,
       },
     });
 
     res.json({
       success: true,
       message: "Produk berhasil ditambahkan",
-      product,
+      product: formatProduct(product),
     });
-  } catch (err) {
+  } catch (error) {
+    console.log(error);
     res.status(500).json({
       success: false,
       message: "Gagal menambahkan produk",
@@ -263,34 +394,54 @@ app.post("/api/products", upload.single("image"), async (req, res) => {
   }
 });
 
-// UPDATE PRODUCT
-app.put("/api/products/:id", upload.single("image"), async (req, res) => {
+app.put("/api/products/:id", upload.array("images", 10), async (req, res) => {
   try {
     const id = Number(req.params.id);
-    const { name, price, stock, brand, category, condition, oldImage } = req.body;
 
-    const imagePath = req.file ? `/uploads/${req.file.filename}` : oldImage || "";
+    const {
+      name,
+      price,
+      stock,
+      brand,
+      category,
+      condition,
+      description,
+      oldImage,
+    } = req.body;
+
+    const categoryData = await getOrCreateCategory(category || "DSLR");
+
+    const files = req.files as Express.Multer.File[];
+
+    let imageData = oldImage || "[]";
+
+    if (files && files.length > 0) {
+      const imagePaths = files.map((file) => `/uploads/${file.filename}`);
+      imageData = JSON.stringify(imagePaths);
+    }
 
     const product = await prisma.product.update({
       where: { id },
       data: {
-        name,
+        name: String(name),
         price: Number(price),
         stock: Number(stock),
         brand: brand || "",
         category: category || "DSLR",
         condition: condition || "NEW",
-        image: imagePath,
-        categoryId: 1,
+        description: description || "",
+        image: imageData,
+        categoryId: categoryData.id,
       },
     });
 
     res.json({
       success: true,
       message: "Produk berhasil diupdate",
-      product,
+      product: formatProduct(product),
     });
-  } catch (err) {
+  } catch (error) {
+    console.log(error);
     res.status(500).json({
       success: false,
       message: "Gagal update produk",
@@ -298,7 +449,6 @@ app.put("/api/products/:id", upload.single("image"), async (req, res) => {
   }
 });
 
-// DELETE PRODUCT
 app.delete("/api/products/:id", async (req, res) => {
   try {
     const id = Number(req.params.id);
@@ -311,7 +461,8 @@ app.delete("/api/products/:id", async (req, res) => {
       success: true,
       message: "Produk berhasil dihapus",
     });
-  } catch (err) {
+  } catch (error) {
+    console.log(error);
     res.status(500).json({
       success: false,
       message: "Gagal hapus produk",
@@ -319,7 +470,9 @@ app.delete("/api/products/:id", async (req, res) => {
   }
 });
 
-// CHECKOUT
+/* =========================
+   CHECKOUT
+========================= */
 app.post("/api/checkout", async (req, res) => {
   try {
     const { items } = req.body;
@@ -333,7 +486,9 @@ app.post("/api/checkout", async (req, res) => {
 
     for (const item of items) {
       const product = await prisma.product.findUnique({
-        where: { id: Number(item.id) },
+        where: {
+          id: Number(item.id),
+        },
       });
 
       if (!product) {
@@ -350,19 +505,32 @@ app.post("/api/checkout", async (req, res) => {
         });
       }
 
-      await prisma.product.update({
-        where: { id: Number(item.id) },
-        data: {
-          stock: product.stock - Number(item.qty),
-        },
-      });
+      const newStock = product.stock - Number(item.qty);
+
+      if (newStock <= 0) {
+        await prisma.product.delete({
+          where: {
+            id: Number(item.id),
+          },
+        });
+      } else {
+        await prisma.product.update({
+          where: {
+            id: Number(item.id),
+          },
+          data: {
+            stock: newStock,
+          },
+        });
+      }
     }
 
     res.json({
       success: true,
       message: "Checkout berhasil",
     });
-  } catch (err) {
+  } catch (error) {
+    console.log(error);
     res.status(500).json({
       success: false,
       message: "Checkout gagal",

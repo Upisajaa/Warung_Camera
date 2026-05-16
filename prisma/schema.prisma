@@ -17,7 +17,14 @@ model User {
   name      String
   email     String   @unique
   password  String
+
   role      Role     @default(USER)
+
+  phone     String?
+  address   String?  @db.Text
+  gender    String?
+  image     String?  @db.LongText
+
   createdAt DateTime @default(now()) @map("created_at")
 
   carts     Cart[]
@@ -31,83 +38,123 @@ model Category {
   id       Int       @id @default(autoincrement())
   name     String
   icon     String?
+
   products Product[]
 
   @@map("categories")
 }
 
 model Product {
-  id    Int     @id @default(autoincrement())
-  name  String
-  price Decimal @db.Decimal(12, 2)
-  image String?
-  brand String?
-  stock Int     @default(0)
+  id          Int      @id @default(autoincrement())
+  name        String
 
-  description String?
+  price       Decimal  @db.Decimal(12, 2)
+
+  image       String?  @db.LongText
+
+  brand       String?
+
+  stock       Int      @default(0)
+
+  description String?  @db.Text
+
   rating      Decimal? @db.Decimal(2, 1)
+
   categoryId  Int      @map("category_id")
 
-  category  String @default("DSLR")
-  condition String @default("NEW")
+  category    String   @default("DSLR")
 
-  createdAt DateTime    @default(now()) @map("created_at")
-  Category  Category    @relation(fields: [categoryId], references: [id])
-  Cart      Cart[]
-  OrderItem OrderItem[]
-  Wishlist  Wishlist[]
+  condition   String   @default("NEW")
+
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  Category    Category    @relation(fields: [categoryId], references: [id])
+
+  Cart        Cart[]
+  OrderItem   OrderItem[]
+  Wishlist    Wishlist[]
 
   @@map("products")
 }
 
 model Cart {
   id        Int      @id @default(autoincrement())
+
   userId    Int      @map("user_id")
+
   productId Int      @map("product_id")
+
   quantity  Int      @default(1)
+
   createdAt DateTime @default(now()) @map("created_at")
 
-  user    User    @relation(fields: [userId], references: [id])
-  product Product @relation(fields: [productId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+
+  product   Product  @relation(fields: [productId], references: [id])
 
   @@map("cart")
 }
 
 model Order {
-  id         Int      @id @default(autoincrement())
-  userId     Int      @map("user_id")
-  totalPrice Decimal  @default(0) @map("total_price")
-  status     String   @default("pending")
-  createdAt  DateTime @default(now()) @map("created_at")
+  id              Int      @id @default(autoincrement())
 
-  user  User        @relation(fields: [userId], references: [id])
-  items OrderItem[]
+  userId          Int      @map("user_id")
+
+  totalPrice      Decimal  @default(0) @map("total_price")
+
+  status          String   @default("Menunggu Diproses")
+
+  payment         String?
+
+  paymentStatus   String?  @default("Menunggu Pembayaran") @map("payment_status")
+
+  courier         String?
+
+  receipt         String?
+
+  address         String?  @db.Text
+
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  user            User        @relation(fields: [userId], references: [id])
+
+  items           OrderItem[]
 
   @@map("orders")
 }
 
 model OrderItem {
-  id        Int     @id @default(autoincrement())
-  orderId   Int     @map("order_id")
-  productId Int     @map("product_id")
-  quantity  Int     @default(1)
-  price     Decimal
-  subtotal  Decimal
+  id        Int      @id @default(autoincrement())
 
-  order   Order   @relation(fields: [orderId], references: [id])
-  product Product @relation(fields: [productId], references: [id])
+  orderId   Int      @map("order_id")
+
+  productId Int      @map("product_id")
+
+  quantity  Int      @default(1)
+
+  price     Decimal  @db.Decimal(12, 2)
+
+  subtotal  Decimal  @db.Decimal(12, 2)
+
+  order     Order    @relation(fields: [orderId], references: [id])
+
+  product   Product  @relation(fields: [productId], references: [id])
 
   @@map("order_items")
 }
 
 model Wishlist {
   id        Int      @id @default(autoincrement())
+
   userId    Int      @map("user_id")
+
   productId Int      @map("product_id")
+
   createdAt DateTime @default(now()) @map("created_at")
 
-  user    User    @relation(fields: [userId], references: [id])
-  product Product @relation(fields: [productId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+
+  product   Product  @relation(fields: [productId], references: [id])
 
   @@map("wishlist")
 }

@@ -1,24 +1,12 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Eye, EyeOff, Camera, Mail, Lock, User } from "lucide-react";
 import toast from "react-hot-toast";
-import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
-import { Camera, Eye, EyeOff, Loader2 } from "lucide-react";
+import {
+  GoogleAuthProvider,
+  signInWithPopup,
+} from "firebase/auth";
 import { auth } from "../lib/firebase";
-
-type ApiUser = {
-  id: number;
-  name: string;
-  email: string;
-  role: "ADMIN" | "USER" | string;
-};
-
-type ApiResponse = {
-  success: boolean;
-  message?: string;
-  user?: ApiUser;
-};
-
-const API_URL = "http://localhost:3000";
 
 export default function AuthPage() {
   const navigate = useNavigate();
@@ -28,18 +16,15 @@ export default function AuthPage() {
   const [email, setEmail] = useState("admin@warungcamera.com");
   const [password, setPassword] = useState("admin123");
   const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
 
-  const saveUserAndRedirect = (user?: ApiUser, message?: string) => {
-    if (!user) {
-      toast.error("Data user tidak ditemukan");
+  const saveUserAndRedirect = (user: any, isRegister = false) => {
+    localStorage.setItem("user", JSON.stringify(user));
+    window.dispatchEvent(new Event("userChanged"));
+
+    if (isRegister && user.role !== "ADMIN") {
+      navigate("/profile");
       return;
     }
-
-    localStorage.setItem("user", JSON.stringify(user));
-    window.dispatchEvent(new Event("storage"));
-    toast.success(message || "Berhasil masuk");
 
     if (user.role === "ADMIN") {
       navigate("/admin");
@@ -48,15 +33,14 @@ export default function AuthPage() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
 
     const endpoint = isLogin
-      ? `${API_URL}/api/login`
-      : `${API_URL}/api/register`;
+      ? "http://localhost:3000/api/login"
+      : "http://localhost:3000/api/register";
 
-    const payload = isLogin
+    const body = isLogin
       ? { email, password }
       : { name, email, password };
 
@@ -66,38 +50,33 @@ export default function AuthPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(body),
       });
 
-      const data: ApiResponse = await res.json();
+      const data = await res.json();
 
       if (!res.ok || data.success === false) {
-        toast.error(data.message || (isLogin ? "Login gagal" : "Register gagal"));
+        toast.error(data.message || "Gagal proses akun");
         return;
       }
 
-      saveUserAndRedirect(data.user, data.message);
-    } catch (error) {
-      console.error(error);
-      toast.error("Gagal terhubung ke server. Pastikan backend sudah berjalan.");
-    } finally {
-      setLoading(false);
+      toast.success(isLogin ? "Login berhasil" : "Register berhasil");
+
+      saveUserAndRedirect(data.user, !isLogin);
+    } catch {
+      toast.error("Gagal terhubung ke server");
     }
   };
 
-  const handleGoogleAuth = async () => {
-    setGoogleLoading(true);
-
+  const handleGoogleLogin = async () => {
     try {
       const provider = new GoogleAuthProvider();
-      provider.setCustomParameters({
-        prompt: "select_account",
-      });
 
       const result = await signInWithPopup(auth, provider);
+
       const googleUser = result.user;
 
-      const res = await fetch(`${API_URL}/api/google-auth`, {
+      const res = await fetch("http://localhost:3000/api/google-auth", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -105,172 +84,167 @@ export default function AuthPage() {
         body: JSON.stringify({
           name: googleUser.displayName,
           email: googleUser.email,
-          photoURL: googleUser.photoURL,
-          uid: googleUser.uid,
+          image: googleUser.photoURL,
         }),
       });
 
-      const data: ApiResponse = await res.json();
+      const data = await res.json();
 
       if (!res.ok || data.success === false) {
         toast.error(data.message || "Login Google gagal");
         return;
       }
 
-      saveUserAndRedirect(data.user, data.message || "Login Google berhasil");
-    } catch (error) {
-      console.error(error);
+      toast.success("Login Google berhasil");
+      saveUserAndRedirect(data.user, false);
+    } catch {
       toast.error("Login Google gagal. Aktifkan Google Sign-In di Firebase.");
-    } finally {
-      setGoogleLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-100 via-white to-gray-200 px-4 py-12 flex items-center justify-center">
-      <div className="w-full max-w-5xl grid md:grid-cols-2 bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-100">
-        <div className="hidden md:flex flex-col justify-between bg-black text-white p-10">
+    <div className="min-h-screen bg-gray-100 px-6 py-14">
+      <div className="max-w-6xl mx-auto bg-white rounded-3xl shadow-2xl overflow-hidden grid md:grid-cols-2">
+        <div className="bg-black text-white p-12 flex flex-col justify-between min-h-[620px]">
           <div>
-            <div className="w-14 h-14 rounded-2xl bg-white text-black flex items-center justify-center mb-6">
-              <Camera size={30} />
+            <div className="w-16 h-16 bg-white text-black rounded-2xl flex items-center justify-center mb-8">
+              <Camera size={34} />
             </div>
 
-            <h1 className="text-4xl font-extrabold leading-tight">
+            <h1 className="text-5xl font-extrabold mb-6">
               Warung Camera
             </h1>
 
-            <p className="mt-4 text-gray-300 leading-relaxed">
+            <p className="text-xl text-gray-300 leading-relaxed">
               Marketplace kamera untuk belanja kamera, lensa, dan aksesoris
               dengan akun email atau Google.
             </p>
           </div>
 
-          <div className="bg-white/10 rounded-2xl p-5 border border-white/10">
-            <p className="text-sm text-gray-300">Akun admin contoh</p>
-            <p className="mt-2 font-semibold">admin@warungcamera.com</p>
-            <p className="text-gray-300">admin123</p>
+          <div className="bg-white/10 border border-white/10 rounded-2xl p-6">
+            <p className="text-gray-300 mb-3">Akun admin contoh</p>
+
+            <p className="font-bold text-lg">admin@warungcamera.com</p>
+            <p className="text-lg">admin123</p>
           </div>
         </div>
 
-        <div className="p-6 sm:p-10">
-          <div className="md:hidden flex items-center gap-3 mb-6">
-            <div className="w-11 h-11 rounded-xl bg-black text-white flex items-center justify-center">
-              <Camera size={24} />
-            </div>
-
-            <div>
-              <h1 className="text-xl font-bold">Warung Camera</h1>
-              <p className="text-sm text-gray-500">Login / Register</p>
-            </div>
-          </div>
-
-          <h2 className="text-3xl font-bold text-gray-900">
+        <div className="p-12">
+          <h2 className="text-4xl font-extrabold text-gray-900 mb-3">
             {isLogin ? "Masuk ke akun" : "Buat akun baru"}
           </h2>
 
-          <p className="mt-2 text-gray-500">
+          <p className="text-gray-500 mb-8">
             {isLogin
               ? "Login memakai email biasa atau akun Google."
-              : "Register memakai email biasa atau langsung dengan Google."}
+              : "Register akun baru, lalu lengkapi profil kamu."}
           </p>
 
           <button
             type="button"
-            onClick={handleGoogleAuth}
-            disabled={googleLoading || loading}
-            className="mt-7 w-full h-12 border border-gray-300 rounded-xl flex items-center justify-center gap-3 font-semibold hover:bg-gray-50 transition disabled:opacity-60"
+            onClick={handleGoogleLogin}
+            className="w-full border rounded-2xl py-4 font-bold text-lg hover:bg-gray-100 transition mb-8"
           >
-            {googleLoading ? (
-              <Loader2 className="animate-spin" size={20} />
-            ) : (
-              <span className="w-6 h-6 rounded-full bg-white border flex items-center justify-center text-sm font-bold text-red-500">
-                G
-              </span>
-            )}
-
-            {googleLoading ? "Menghubungkan Google..." : "Lanjutkan dengan Google"}
+            <span className="text-red-600 mr-3">G</span>
+            Lanjutkan dengan Google
           </button>
 
-          <div className="flex items-center gap-4 my-7">
+          <div className="flex items-center gap-4 mb-8">
             <div className="h-px bg-gray-200 flex-1" />
-            <span className="text-sm text-gray-400">atau</span>
+            <span className="text-gray-400">atau</span>
             <div className="h-px bg-gray-200 flex-1" />
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-5">
             {!isLogin && (
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">
-                  Nama Lengkap
-                </label>
+                <label className="font-bold mb-2 block">Nama Lengkap</label>
 
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Contoh: Thalibul Huda"
-                  className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-black"
-                  required={!isLogin}
-                />
+                <div className="relative">
+                  <User
+                    size={20}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
+                  />
+
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Contoh: Thalibul Huda"
+                    className="w-full border rounded-2xl pl-12 pr-4 py-4 text-lg focus:outline-none focus:border-red-600"
+                    required={!isLogin}
+                  />
+                </div>
               </div>
             )}
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">
-                Email
-              </label>
+              <label className="font-bold mb-2 block">Email</label>
 
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Masukkan email"
-                className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-black"
-                required
-              />
+              <div className="relative">
+                <Mail
+                  size={20}
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
+                />
+
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Masukkan email"
+                  className="w-full border rounded-2xl pl-12 pr-4 py-4 text-lg focus:outline-none focus:border-red-600"
+                  required
+                />
+              </div>
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">
-                Password
-              </label>
+              <label className="font-bold mb-2 block">Password</label>
 
               <div className="relative">
+                <Lock
+                  size={20}
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
+                />
+
                 <input
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Minimal 6 karakter"
-                  className="w-full border border-gray-300 rounded-xl px-4 py-3 pr-12 focus:outline-none focus:ring-2 focus:ring-black"
+                  placeholder="Masukkan password"
+                  className="w-full border rounded-2xl pl-12 pr-14 py-4 text-lg focus:outline-none focus:border-red-600"
                   required
                 />
 
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-black"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500"
                 >
-                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  {showPassword ? <EyeOff size={22} /> : <Eye size={22} />}
                 </button>
               </div>
             </div>
 
             <button
               type="submit"
-              disabled={loading || googleLoading}
-              className="w-full h-12 bg-black text-white rounded-xl font-semibold hover:bg-gray-800 transition disabled:opacity-60 flex items-center justify-center gap-2"
+              className="w-full bg-black text-white py-4 rounded-2xl font-bold text-lg hover:bg-gray-800 transition"
             >
-              {loading && <Loader2 className="animate-spin" size={20} />}
-              {loading ? "Memproses..." : isLogin ? "Login Email" : "Register Email"}
+              {isLogin ? "Login Email" : "Register Email"}
             </button>
           </form>
 
           <button
             type="button"
-            onClick={() => setIsLogin(!isLogin)}
-            className="w-full mt-5 text-sm text-blue-600 hover:underline font-medium"
+            onClick={() => {
+              setIsLogin(!isLogin);
+              setName("");
+            }}
+            className="w-full mt-7 text-blue-600 font-medium"
           >
-            {isLogin ? "Belum punya akun? Register" : "Sudah punya akun? Login"}
+            {isLogin
+              ? "Belum punya akun? Register"
+              : "Sudah punya akun? Login"}
           </button>
         </div>
       </div>

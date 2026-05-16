@@ -1,33 +1,26 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { Search, ShoppingCart } from "lucide-react";
-import { Link } from "react-router-dom";
+import toast from "react-hot-toast";
 
 type Product = {
   id: number;
   name: string;
   price: number;
   stock: number;
-  image?: string;
   brand?: string;
   category?: string;
   condition?: string;
+  image?: string;
+  description?: string;
 };
 
 export default function Products() {
   const [products, setProducts] = useState<Product[]>([]);
   const [search, setSearch] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("All");
-
-  useEffect(() => {
-    fetch("http://localhost:3000/api/products")
-      .then((res) => res.json())
-      .then((data) => {
-        setProducts(Array.isArray(data) ? data : []);
-      })
-      .catch((err) => {
-        console.log(err);
-      });
-  }, []);
+  const [activeCategory, setActiveCategory] = useState("All");
+  const [activeBrand, setActiveBrand] = useState("All Brand");
+  const [searchParams] = useSearchParams();
 
   const categories = [
     "All",
@@ -36,47 +29,141 @@ export default function Products() {
     "Action Cam",
     "Drone",
     "Lensa",
+    "Lighting",
+    "Audio",
+    "Tripod",
+    "Gimbal",
     "Aksesoris",
   ];
 
-  const filteredProducts = useMemo(() => {
-    return products.filter((product) => {
-      const matchSearch = product.name
-        .toLowerCase()
-        .includes(search.toLowerCase());
+  const brands = [
+    "All Brand",
+    "Canon",
+    "Nikon",
+    "Sony",
+    "Fujifilm",
+    "Panasonic",
+    "Olympus",
+    "GoPro",
+    "DJI",
+  ];
 
-      const matchCategory =
-        selectedCategory === "All"
-          ? true
-          : product.category === selectedCategory;
+  useEffect(() => {
+    const categoryFromUrl = searchParams.get("category");
 
-      const matchStock = Number(product.stock) > 0;
+    if (categoryFromUrl) {
+      setActiveCategory(categoryFromUrl);
+    }
 
-      return matchSearch && matchCategory && matchStock;
-    });
-  }, [products, search, selectedCategory]);
+    fetchProducts();
+  }, [searchParams]);
+
+  const fetchProducts = async () => {
+    try {
+      const res = await fetch("http://localhost:3000/api/products");
+      const data = await res.json();
+
+      const activeProducts = data.filter((product: Product) => {
+        return Number(product.stock) > 0;
+      });
+
+      setProducts(activeProducts);
+    } catch {
+      toast.error("Gagal mengambil produk");
+    }
+  };
+
+  const formatRupiah = (value: number) => {
+    return `Rp ${Number(value).toLocaleString("id-ID")}`;
+  };
+
+  const getImages = (image?: string) => {
+    if (!image) return [];
+
+    try {
+      const parsed = JSON.parse(image);
+      return Array.isArray(parsed) ? parsed : [image];
+    } catch {
+      return [image];
+    }
+  };
+
+  const getProductImage = (image?: string) => {
+    const images = getImages(image);
+
+    if (images.length === 0) {
+      return "https://via.placeholder.com/500";
+    }
+
+    return `http://localhost:3000${images[0]}`;
+  };
+
+  const filteredProducts = products.filter((product) => {
+    const matchCategory =
+      activeCategory === "All" || product.category === activeCategory;
+
+    const matchBrand =
+      activeBrand === "All Brand" ||
+      (product.brand || "").toLowerCase() === activeBrand.toLowerCase();
+
+    const matchSearch =
+      product.name.toLowerCase().includes(search.toLowerCase()) ||
+      (product.brand || "").toLowerCase().includes(search.toLowerCase()) ||
+      (product.description || "").toLowerCase().includes(search.toLowerCase());
+
+    return matchCategory && matchBrand && matchSearch;
+  });
+
+  const handleAddToCart = (product: Product) => {
+    const cart = JSON.parse(localStorage.getItem("cart") || "[]");
+
+    const images = getImages(product.image);
+    const firstImage = images[0] || "";
+
+    const existingProduct = cart.find((item: any) => item.id === product.id);
+
+    if (existingProduct) {
+      existingProduct.qty += 1;
+    } else {
+      cart.push({
+        id: product.id,
+        name: product.name,
+        price: product.price,
+        image: firstImage,
+        qty: 1,
+      });
+    }
+
+    localStorage.setItem("cart", JSON.stringify(cart));
+    toast.success("Produk masuk keranjang");
+  };
+
+  const resetFilter = () => {
+    setActiveCategory("All");
+    setActiveBrand("All Brand");
+    setSearch("");
+  };
+
+  const showActiveFilter =
+    activeCategory !== "All" || activeBrand !== "All Brand" || search !== "";
 
   return (
-    <div className="min-h-screen bg-[#f5f5f5] px-6 py-12">
+    <div className="min-h-screen bg-gray-100 px-8 py-12">
       <div className="max-w-7xl mx-auto">
-
-        {/* HEADER */}
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 mb-10">
+        <div className="flex flex-col md:flex-row justify-between gap-6 mb-10">
           <div>
-            <h1 className="text-6xl font-bold mb-3">
+            <h1 className="text-5xl font-extrabold text-gray-900">
               Produk Kamera
             </h1>
 
-            <p className="text-gray-600 text-xl">
-              Produk langsung dari database MySQL
+            <p className="text-gray-500 mt-3 text-lg">
             </p>
           </div>
 
-          {/* SEARCH */}
-          <div className="relative">
+          <div className="relative w-full md:w-[420px]">
             <Search
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
-              size={22}
+              className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400"
+              size={24}
             />
 
             <input
@@ -84,107 +171,168 @@ export default function Products() {
               placeholder="Cari produk..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full lg:w-[420px] border border-gray-300 rounded-full py-4 pl-14 pr-5 outline-none bg-white"
+              className="w-full border rounded-full pl-14 pr-5 py-4 text-lg focus:outline-none focus:ring-2 focus:ring-red-600"
             />
           </div>
         </div>
 
-        {/* CATEGORY */}
-        <div className="flex flex-wrap gap-4 mb-12">
-          {categories.map((category) => (
-            <button
-              key={category}
-              onClick={() => setSelectedCategory(category)}
-              className={`px-8 py-4 rounded-full font-semibold transition ${
-                selectedCategory === category
-                  ? "bg-red-600 text-white"
-                  : "bg-white text-black"
-              }`}
-            >
-              {category}
-            </button>
-          ))}
+        <div className="mb-5">
+          <h2 className="font-bold text-xl mb-4">Kategori Produk</h2>
+
+          <div className="flex gap-4 flex-wrap">
+            {categories.map((category) => (
+              <button
+                key={category}
+                onClick={() => setActiveCategory(category)}
+                className={`px-8 py-4 rounded-full font-bold text-lg transition ${
+                  activeCategory === category
+                    ? "bg-red-600 text-white"
+                    : "bg-white text-black hover:bg-gray-200"
+                }`}
+              >
+                {category}
+              </button>
+            ))}
+          </div>
         </div>
 
-        {/* PRODUCT GRID */}
-        {filteredProducts.length > 0 ? (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {filteredProducts.map((product) => {
+        <div className="mb-8">
+          <h2 className="font-bold text-xl mb-4">Merk Kamera</h2>
 
-              const imageUrl = product.image
-                ? `http://localhost:3000${product.image}`
-                : "https://placehold.co/600x400";
+          <div className="flex gap-4 flex-wrap">
+            {brands.map((brand) => (
+              <button
+                key={brand}
+                onClick={() => setActiveBrand(brand)}
+                className={`px-7 py-3 rounded-full font-bold text-lg transition ${
+                  activeBrand === brand
+                    ? "bg-black text-white"
+                    : "bg-white text-black hover:bg-gray-200"
+                }`}
+              >
+                {brand}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {showActiveFilter && (
+          <div className="mb-12 flex items-center justify-between bg-white rounded-2xl px-6 py-4 border">
+            <p className="font-semibold">
+              Filter aktif:{" "}
+              {activeCategory !== "All" && (
+                <span className="text-red-600">{activeCategory}</span>
+              )}
+              {activeCategory !== "All" && activeBrand !== "All Brand" && " + "}
+              {activeBrand !== "All Brand" && (
+                <span className="text-red-600">{activeBrand}</span>
+              )}
+              {search !== "" && (
+                <>
+                  {(activeCategory !== "All" || activeBrand !== "All Brand") &&
+                    " + "}
+                  <span className="text-red-600">"{search}"</span>
+                </>
+              )}
+            </p>
+
+            <button
+              onClick={resetFilter}
+              className="bg-gray-200 px-5 py-2 rounded-xl font-bold hover:bg-gray-300"
+            >
+              Reset Filter
+            </button>
+          </div>
+        )}
+
+        {filteredProducts.length === 0 ? (
+          <div className="bg-white rounded-3xl p-16 text-center shadow">
+            <h2 className="text-3xl font-bold mb-3">Produk Tidak Ditemukan</h2>
+
+            <p className="text-gray-500">
+              Belum ada produk untuk kombinasi kategori dan merk ini.
+            </p>
+          </div>
+        ) : (
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
+            {filteredProducts.map((product) => {
+              const images = getImages(product.image);
 
               return (
                 <div
                   key={product.id}
-                  className="bg-white rounded-3xl overflow-hidden shadow hover:shadow-2xl transition"
+                  className="bg-white rounded-3xl shadow-md overflow-hidden border hover:shadow-xl transition"
                 >
-                  {/* IMAGE */}
-                  <div className="bg-gray-100 h-[280px] flex items-center justify-center p-6">
-                    <img
-                      src={imageUrl}
-                      alt={product.name}
-                      className="max-h-full object-contain"
-                    />
-                  </div>
+                  <Link to={`/produk/${product.id}`}>
+                    <div className="h-80 bg-gray-100 flex items-center justify-center p-6">
+                      <img
+                        src={getProductImage(product.image)}
+                        alt={product.name}
+                        className="w-full h-full object-contain rounded-2xl"
+                      />
+                    </div>
+                  </Link>
 
-                  {/* CONTENT */}
                   <div className="p-6">
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="bg-red-100 text-red-600 px-4 py-1 rounded-full text-sm font-semibold">
-                        {product.category}
+                    <div className="flex justify-between items-center mb-4">
+                      <span className="bg-red-100 text-red-600 px-4 py-2 rounded-full font-bold text-sm">
+                        {product.category || "Kamera"}
                       </span>
 
-                      <span className="bg-black text-white px-4 py-1 rounded-full text-sm">
-                        {product.condition}
+                      <span className="bg-black text-white px-4 py-2 rounded-full font-bold text-sm">
+                        {product.condition || "NEW"}
                       </span>
                     </div>
 
-                    <h2 className="text-2xl font-bold mb-2">
-                      {product.name}
-                    </h2>
+                    <Link to={`/produk/${product.id}`}>
+                      <h2 className="text-2xl font-extrabold mb-2 hover:text-red-600">
+                        {product.name}
+                      </h2>
+                    </Link>
 
                     <p className="text-gray-500 mb-4">
-                      {product.brand}
+                      {product.brand || "Warung Camera"}
                     </p>
 
-                    <div className="flex items-center justify-between mb-6">
-                      <p className="text-3xl font-bold text-red-600">
-                        Rp{" "}
-                        {Number(product.price).toLocaleString("id-ID")}
+                    {product.description && (
+                      <p className="text-gray-600 mb-4 line-clamp-2">
+                        {product.description}
+                      </p>
+                    )}
+
+                    <div className="mb-5">
+                      <p className="text-red-600 text-3xl font-extrabold">
+                        {formatRupiah(product.price)}
                       </p>
 
-                      <span className="text-gray-500">
+                      <p className="text-gray-500 mt-1">
                         Stok {product.stock}
-                      </span>
+                      </p>
+
+                      <p className="text-gray-400 text-sm">
+                        {images.length} gambar
+                      </p>
                     </div>
 
-                    {/* BUTTON */}
                     <div className="flex gap-3">
-
                       <Link
                         to={`/produk/${product.id}`}
-                        className="flex-1 bg-red-600 text-white py-3 rounded-2xl font-semibold text-center hover:bg-red-700 transition"
+                        className="flex-1 bg-red-600 text-white text-center py-4 rounded-2xl font-bold hover:bg-red-700 transition"
                       >
                         Lihat Detail
                       </Link>
 
                       <button
-                        className="w-14 h-14 bg-black text-white rounded-2xl flex items-center justify-center"
+                        onClick={() => handleAddToCart(product)}
+                        className="bg-black text-white px-5 rounded-2xl hover:bg-gray-800 transition"
                       >
-                        <ShoppingCart size={22} />
+                        <ShoppingCart size={24} />
                       </button>
-
                     </div>
                   </div>
                 </div>
               );
             })}
-          </div>
-        ) : (
-          <div className="text-center text-gray-500 text-xl mt-20">
-            Produk tidak ditemukan.
           </div>
         )}
       </div>
