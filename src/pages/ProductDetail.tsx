@@ -1,18 +1,16 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import {
   ShoppingCart,
-  CreditCard,
   Truck,
   Minus,
   Plus,
   ChevronLeft,
   ChevronRight,
   Info,
-  Upload,
+  CreditCard,
 } from "lucide-react";
 import toast from "react-hot-toast";
-import QRCode from "react-qr-code";
 
 type Product = {
   id: number;
@@ -28,11 +26,10 @@ type Product = {
 
 export default function ProductDetail() {
   const { id } = useParams();
+  const navigate = useNavigate();
 
   const [product, setProduct] = useState<Product | null>(null);
   const [qty, setQty] = useState(1);
-  const [paymentMethod, setPaymentMethod] = useState("Transfer Bank");
-  const [paymentProof, setPaymentProof] = useState<File | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeImage, setActiveImage] = useState(0);
 
@@ -51,10 +48,17 @@ export default function ProductDetail() {
     }
   };
 
+  const getImageUrl = (image?: string) => {
+    if (!image) return "https://via.placeholder.com/500";
+    if (image.startsWith("http")) return image;
+    return `http://localhost:3000${image}`;
+  };
+
   const fetchProduct = async () => {
     try {
       const res = await fetch(`http://localhost:3000/api/products/${id}`);
       const data = await res.json();
+
       setProduct(data.product || data);
     } catch {
       toast.error("Gagal mengambil detail produk");
@@ -84,12 +88,24 @@ export default function ProductDetail() {
   const handleAddToCart = () => {
     if (!product) return;
 
+    if (product.stock <= 0) {
+      toast.error("Stok produk habis");
+      return;
+    }
+
     const images = getImages(product.image);
     const cart = JSON.parse(localStorage.getItem("cart") || "[]");
     const existingProduct = cart.find((item: any) => item.id === product.id);
 
     if (existingProduct) {
-      existingProduct.qty += qty;
+      const newQty = existingProduct.qty + qty;
+
+      if (newQty > product.stock) {
+        toast.error("Jumlah keranjang melebihi stok");
+        return;
+      }
+
+      existingProduct.qty = newQty;
     } else {
       cart.push({
         id: product.id,
@@ -97,6 +113,7 @@ export default function ProductDetail() {
         price: product.price,
         image: images[0] || "",
         qty,
+        stock: product.stock,
       });
     }
 
@@ -104,139 +121,53 @@ export default function ProductDetail() {
     toast.success("Produk masuk keranjang");
   };
 
-  const saveOrderToLocalStorage = (total: number, proofUrl: string) => {
+  const handleBuyNow = () => {
     if (!product) return;
-
-    const images = getImages(product.image);
-    const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
-    const existingOrders = JSON.parse(localStorage.getItem("orders") || "[]");
-
-    const newOrder = {
-      id: Date.now(),
-      buyerName: currentUser.name || "User",
-      buyerEmail: currentUser.email || "-",
-      productId: product.id,
-      product: product.name,
-      image: images[0] ? `http://localhost:3000${images[0]}` : "",
-      price: product.price,
-      qty,
-      total,
-      payment: paymentMethod,
-      paymentProof: proofUrl,
-      paymentStatus: "Menunggu Konfirmasi Admin",
-      status: "Menunggu Diproses",
-      courier: "",
-      receipt: "",
-      address: currentUser.address || "Bandung, Indonesia",
-      date: new Date().toLocaleDateString("id-ID", {
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-      }),
-      timeline: [
-        {
-          title: "Pesanan Dibuat",
-          description: "User checkout dan mengirim bukti pembayaran.",
-          time: new Date().toLocaleString("id-ID"),
-        },
-      ],
-    };
-
-    existingOrders.unshift(newOrder);
-    localStorage.setItem("orders", JSON.stringify(existingOrders));
-  };
-
-  const handleCheckout = async () => {
-    if (!product) return;
-
-    const total = product.price * qty;
-    const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
 
     if (product.stock <= 0) {
       toast.error("Stok produk habis");
       return;
     }
 
-    if (product.stock < qty) {
+    if (qty > product.stock) {
       toast.error("Stok produk tidak cukup");
       return;
     }
 
-    if (!paymentProof) {
-      toast.error("Upload bukti pembayaran dulu");
-      return;
-    }
+    const images = getImages(product.image);
 
-    const confirmCheckout = confirm(
-      `Checkout produk ${product.name}?\n\nJumlah: ${qty}\nMetode: ${paymentMethod}\nTotal: ${formatRupiah(total)}`
+    const checkoutItems = [
+      {
+        id: product.id,
+        name: product.name,
+        price: product.price,
+        image: images[0] || "",
+        qty,
+        stock: product.stock,
+      },
+    ];
+
+    const subtotal = product.price * qty;
+    const tax = subtotal * 0.11;
+    const total = subtotal + tax;
+
+    localStorage.setItem("checkoutItems", JSON.stringify(checkoutItems));
+    localStorage.setItem(
+      "checkoutSummary",
+      JSON.stringify({
+        subtotal,
+        tax,
+        total,
+      })
     );
 
-    if (!confirmCheckout) return;
-
-    try {
-      const formData = new FormData();
-
-      formData.append(
-        "items",
-        JSON.stringify([
-          {
-            id: product.id,
-            name: product.name,
-            price: product.price,
-            qty,
-          },
-        ])
-      );
-
-      formData.append("userEmail", currentUser.email || "-");
-      formData.append("userName", currentUser.name || "User");
-      formData.append("total", String(total));
-      formData.append("paymentMethod", paymentMethod);
-      formData.append("paymentProof", paymentProof);
-
-      const res = await fetch("http://localhost:3000/api/checkout", {
-        method: "POST",
-        body: formData,
-      });
-
-      const data = await res.json();
-
-      if (!res.ok || data.success === false) {
-        toast.error(data.message || "Checkout gagal");
-        return;
-      }
-
-      const proofUrl = data.order?.paymentProof
-        ? `http://localhost:3000${data.order.paymentProof}`
-        : "";
-
-      saveOrderToLocalStorage(total, proofUrl);
-
-      toast.success("Checkout berhasil, bukti pembayaran terkirim ke admin");
-
-      alert(`
-CHECKOUT BERHASIL
-
-Produk: ${product.name}
-Jumlah: ${qty}
-Metode: ${paymentMethod}
-Total: ${formatRupiah(total)}
-
-Bukti pembayaran sudah dikirim ke admin.
-Status: Menunggu Konfirmasi Admin
-      `);
-
-      fetchProduct();
-      setQty(1);
-      setPaymentProof(null);
-    } catch {
-      toast.error("Gagal terhubung ke server");
-    }
+    toast.success("Lanjut ke pembayaran");
+    navigate("/payment");
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-xl font-semibold">
+      <div className="flex min-h-screen items-center justify-center text-xl font-semibold">
         Loading produk...
       </div>
     );
@@ -244,18 +175,17 @@ Status: Menunggu Konfirmasi Admin
 
   if (!product) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-xl font-semibold">
+      <div className="flex min-h-screen items-center justify-center text-xl font-semibold">
         Produk tidak ditemukan
       </div>
     );
   }
 
   const images = getImages(product.image);
-  const totalPrice = product.price * qty;
 
   const currentImage =
     images.length > 0
-      ? `http://localhost:3000${images[activeImage]}`
+      ? getImageUrl(images[activeImage])
       : "https://via.placeholder.com/500";
 
   const nextImage = () => {
@@ -268,38 +198,30 @@ Status: Menunggu Konfirmasi Admin
     setActiveImage((prev) => (prev - 1 + images.length) % images.length);
   };
 
-  const qrisValue = JSON.stringify({
-    merchant: "Warung Camera",
-    invoice: `INV-${product.id}-${qty}-${totalPrice}`,
-    product: product.name,
-    qty,
-    total: totalPrice,
-    payment: "QRIS",
-  });
-
   return (
     <div className="min-h-screen bg-gray-100 px-6 py-16">
-      <div className="max-w-7xl mx-auto bg-white rounded-3xl shadow-lg p-8 grid grid-cols-1 md:grid-cols-2 gap-12">
+      <div className="mx-auto grid max-w-7xl grid-cols-1 gap-12 rounded-3xl bg-white p-8 shadow-lg md:grid-cols-2">
+        {/* LEFT IMAGE */}
         <div>
-          <div className="relative bg-gray-100 rounded-3xl flex items-center justify-center p-8 h-[560px]">
+          <div className="relative flex h-[560px] items-center justify-center rounded-3xl bg-gray-100 p-8">
             <img
               src={currentImage}
               alt={product.name}
-              className="max-h-[500px] object-contain rounded-2xl"
+              className="max-h-[500px] rounded-2xl object-contain"
             />
 
             {images.length > 1 && (
               <>
                 <button
                   onClick={prevImage}
-                  className="absolute left-5 bg-white shadow p-3 rounded-full hover:bg-gray-200"
+                  className="absolute left-5 rounded-full bg-white p-3 shadow hover:bg-gray-200"
                 >
                   <ChevronLeft size={28} />
                 </button>
 
                 <button
                   onClick={nextImage}
-                  className="absolute right-5 bg-white shadow p-3 rounded-full hover:bg-gray-200"
+                  className="absolute right-5 rounded-full bg-white p-3 shadow hover:bg-gray-200"
                 >
                   <ChevronRight size={28} />
                 </button>
@@ -308,21 +230,21 @@ Status: Menunggu Konfirmasi Admin
           </div>
 
           {images.length > 1 && (
-            <div className="flex gap-3 mt-5 overflow-x-auto">
+            <div className="mt-5 flex gap-3 overflow-x-auto">
               {images.map((img, index) => (
                 <button
                   key={index}
                   onClick={() => setActiveImage(index)}
-                  className={`border-2 rounded-xl p-1 ${
+                  className={`rounded-xl border-2 p-1 ${
                     activeImage === index
                       ? "border-red-600"
                       : "border-transparent"
                   }`}
                 >
                   <img
-                    src={`http://localhost:3000${img}`}
+                    src={getImageUrl(img)}
                     alt={`gambar-${index}`}
-                    className="w-24 h-24 object-cover rounded-lg"
+                    className="h-24 w-24 rounded-lg object-cover"
                   />
                 </button>
               ))}
@@ -330,63 +252,40 @@ Status: Menunggu Konfirmasi Admin
           )}
         </div>
 
+        {/* RIGHT DETAIL */}
         <div>
-          <p className="text-gray-500 font-medium mb-2">
+          <p className="mb-2 font-medium text-gray-500">
             {product.brand || "Warung Camera"}
           </p>
 
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">
+          <h1 className="mb-4 text-4xl font-bold text-gray-900">
             {product.name}
           </h1>
 
-          <h2 className="text-4xl font-extrabold text-red-600 mb-6">
+          <h2 className="mb-6 text-4xl font-extrabold text-red-600">
             {formatRupiah(product.price)}
           </h2>
 
-          <div className="bg-red-50 border border-red-200 rounded-2xl p-4 mb-5 shadow-sm">
-            <div className="flex items-start gap-3 mb-3">
-              <div className="w-8 h-8 rounded-full bg-red-600 text-white flex items-center justify-center shadow">
-                <Info size={16} />
-              </div>
-
-              <div>
-                <h3 className="text-lg font-bold text-red-600 mb-1">
-                  Keterangan Produk
-                </h3>
-
-                <p className="text-gray-500 text-xs">
-                  Detail kondisi dan informasi tambahan produk
-                </p>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl border border-red-100 px-4 py-3">
-              <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-line">
-                {product.description || "Tidak ada keterangan produk."}
-              </p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4 mb-6">
-            <div className="bg-gray-100 p-4 rounded-xl">
+          <div className="mb-6 grid grid-cols-2 gap-4">
+            <div className="rounded-xl bg-gray-100 p-4">
               <p className="text-gray-500">Kategori</p>
               <p className="font-bold">{product.category || "Kamera"}</p>
             </div>
 
-            <div className="bg-gray-100 p-4 rounded-xl">
+            <div className="rounded-xl bg-gray-100 p-4">
               <p className="text-gray-500">Kondisi</p>
               <p className="font-bold">{product.condition || "Baru"}</p>
             </div>
           </div>
 
           <div className="mb-6">
-            <p className="font-bold text-lg mb-3">Jumlah</p>
+            <p className="mb-3 text-lg font-bold">Jumlah</p>
 
             <div className="flex items-center gap-5">
               <button
                 onClick={handleMinus}
                 disabled={qty <= 1}
-                className="w-11 h-11 bg-gray-200 rounded-xl flex items-center justify-center hover:bg-gray-300 disabled:opacity-50"
+                className="flex h-11 w-11 items-center justify-center rounded-xl bg-gray-200 hover:bg-gray-300 disabled:opacity-50"
               >
                 <Minus size={18} />
               </button>
@@ -396,7 +295,7 @@ Status: Menunggu Konfirmasi Admin
               <button
                 onClick={handlePlus}
                 disabled={qty >= product.stock}
-                className="w-11 h-11 bg-gray-200 rounded-xl flex items-center justify-center hover:bg-gray-300 disabled:opacity-50"
+                className="flex h-11 w-11 items-center justify-center rounded-xl bg-gray-200 hover:bg-gray-300 disabled:opacity-50"
               >
                 <Plus size={18} />
               </button>
@@ -405,139 +304,61 @@ Status: Menunggu Konfirmasi Admin
             </div>
           </div>
 
-          <div className="mb-6">
-            <p className="font-bold text-lg mb-3">Metode Pembayaran</p>
-
-            <select
-              value={paymentMethod}
-              onChange={(e) => setPaymentMethod(e.target.value)}
-              className="w-full border border-gray-400 rounded-xl px-4 py-3 text-lg"
-            >
-              <option value="Transfer Bank">Transfer Bank</option>
-              <option value="QRIS">QRIS</option>
-              <option value="E-Wallet">E-Wallet</option>
-              <option value="Kartu Kredit">Kartu Kredit</option>
-            </select>
-
-            <div className="mt-4 bg-gray-100 border rounded-2xl p-5">
-              {paymentMethod === "Transfer Bank" && (
-                <div>
-                  <h3 className="font-bold text-xl mb-2">Transfer Bank</h3>
-                  <p>Bank BCA</p>
-                  <p>No Rekening: 1234567890</p>
-                  <p>Atas Nama: Warung Camera</p>
-                  <p className="mt-3 font-bold text-red-600">
-                    Total: {formatRupiah(totalPrice)}
-                  </p>
-                </div>
-              )}
-
-              {paymentMethod === "QRIS" && (
-                <div>
-                  <h3 className="font-bold text-2xl mb-3">QRIS Payment</h3>
-
-                  <div className="bg-white border-2 rounded-3xl p-6 inline-block shadow-md">
-                    <QRCode value={qrisValue} size={220} />
-
-                    <div className="mt-5 text-center">
-                      <p className="font-bold text-xl">WARUNG CAMERA</p>
-                      <p className="text-gray-500 text-sm">
-                        QRIS Dynamic Payment
-                      </p>
-                    </div>
-                  </div>
-
-                  <p className="mt-4 font-bold text-red-600">
-                    Total: {formatRupiah(totalPrice)}
-                  </p>
-                </div>
-              )}
-
-              {paymentMethod === "E-Wallet" && (
-                <div>
-                  <h3 className="font-bold text-xl mb-2">E-Wallet</h3>
-                  <p>DANA / OVO / GOPAY</p>
-                  <p>Nomor: 08123456789</p>
-                  <p>Atas Nama: Warung Camera</p>
-                  <p className="mt-3 font-bold text-red-600">
-                    Total: {formatRupiah(totalPrice)}
-                  </p>
-                </div>
-              )}
-
-              {paymentMethod === "Kartu Kredit" && (
-                <div>
-                  <h3 className="font-bold text-xl mb-2">Kartu Kredit</h3>
-                  <p>Mendukung Visa dan Mastercard.</p>
-                  <p>Pembayaran diproses melalui payment gateway.</p>
-                  <p className="mt-3 font-bold text-red-600">
-                    Total: {formatRupiah(totalPrice)}
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="mb-6 rounded-2xl border border-gray-300 bg-white p-5">
-            <label className="mb-3 flex items-center gap-2 text-lg font-bold text-black">
-              <Upload size={22} />
-              Upload Bukti Pembayaran
-            </label>
-
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(e) => setPaymentProof(e.target.files?.[0] || null)}
-              className="w-full rounded-xl border border-gray-300 bg-white p-3"
-            />
-
-            {!paymentProof && (
-              <p className="mt-2 text-sm font-semibold text-red-600">
-                Bukti pembayaran wajib diupload sebelum checkout.
-              </p>
-            )}
-
-            {paymentProof && (
-              <p className="mt-2 text-sm font-semibold text-green-600">
-                Bukti pembayaran dipilih: {paymentProof.name}
-              </p>
-            )}
-          </div>
-
-          <div className="bg-red-50 border border-red-200 rounded-2xl p-5 mb-6">
+          <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-5">
             <div className="flex justify-between text-lg">
-              <span>Total Pembayaran</span>
+              <span>Total Harga</span>
               <span className="font-extrabold text-red-600">
-                {formatRupiah(totalPrice)}
+                {formatRupiah(product.price * qty)}
               </span>
             </div>
           </div>
 
-          <div className="flex gap-4">
+          <div className="mb-6 flex gap-4">
             <button
               onClick={handleAddToCart}
               disabled={product.stock <= 0}
-              className="flex-1 bg-black text-white py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-3 hover:bg-gray-800 disabled:opacity-50"
+              className="flex flex-1 items-center justify-center gap-3 rounded-xl bg-black py-4 text-lg font-bold text-white hover:bg-gray-800 disabled:opacity-50"
             >
               <ShoppingCart size={22} />
               Tambah Keranjang
             </button>
 
             <button
-              onClick={handleCheckout}
-              disabled={product.stock <= 0 || !paymentProof}
-              className={`flex-1 py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-3 text-white ${
-                product.stock <= 0 || !paymentProof
-                  ? "bg-gray-400 cursor-not-allowed"
-                  : "bg-red-600 hover:bg-red-700"
-              }`}
+              onClick={handleBuyNow}
+              disabled={product.stock <= 0}
+              className="flex flex-1 items-center justify-center gap-3 rounded-xl bg-red-600 py-4 text-lg font-bold text-white hover:bg-red-700 disabled:opacity-50"
             >
               <CreditCard size={22} />
-              Checkout
+              Beli Sekarang
             </button>
           </div>
 
-          <div className="flex items-center gap-3 mt-7 text-gray-500">
+          {/* KETERANGAN PRODUK DIPINDAHKAN KE SINI */}
+          <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 shadow-sm">
+            <div className="mb-3 flex items-start gap-3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-red-600 text-white shadow">
+                <Info size={16} />
+              </div>
+
+              <div>
+                <h3 className="mb-1 text-lg font-bold text-red-600">
+                  Keterangan Produk
+                </h3>
+
+                <p className="text-xs text-gray-500">
+                  Detail kondisi dan informasi tambahan produk
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-red-100 bg-white px-4 py-3">
+              <p className="whitespace-pre-line text-sm leading-relaxed text-gray-700">
+                {product.description || "Tidak ada keterangan produk."}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-7 flex items-center gap-3 text-gray-500">
             <Truck size={22} />
             <p>Pengiriman tersedia seluruh Indonesia</p>
           </div>
@@ -545,4 +366,4 @@ Status: Menunggu Konfirmasi Admin
       </div>
     </div>
   );
-}   
+}

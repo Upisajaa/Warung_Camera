@@ -1,6 +1,14 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { CreditCard, Upload, ArrowLeft, CheckCircle2 } from "lucide-react";
+import {
+  CreditCard,
+  Upload,
+  ArrowLeft,
+  CheckCircle2,
+  Wallet,
+  Building2,
+  Smartphone,
+} from "lucide-react";
 import toast from "react-hot-toast";
 import QRCode from "react-qr-code";
 
@@ -21,7 +29,9 @@ export default function Payment() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const savedItems = JSON.parse(localStorage.getItem("checkoutItems") || "[]");
+    const savedItems = JSON.parse(
+      localStorage.getItem("checkoutItems") || "[]"
+    );
 
     if (!Array.isArray(savedItems) || savedItems.length === 0) {
       toast.error("Data checkout kosong");
@@ -36,13 +46,10 @@ export default function Payment() {
     return `Rp ${Number(value).toLocaleString("id-ID")}`;
   };
 
-  const subtotal = items.reduce(
+  const total = items.reduce(
     (acc, item) => acc + Number(item.price) * Number(item.qty),
     0
   );
-
-  const tax = subtotal * 0.11;
-  const total = subtotal + tax;
 
   const getImageUrl = (image?: string) => {
     if (!image) return "https://placehold.co/120x120";
@@ -94,7 +101,7 @@ export default function Payment() {
         buyerEmail: currentUser.email || "-",
         product: items.map((item) => item.name).join(", "),
         image: getImageUrl(items[0]?.image),
-        price: subtotal,
+        price: total,
         qty: items.reduce((acc, item) => acc + item.qty, 0),
         total,
         payment: paymentMethod,
@@ -118,7 +125,11 @@ export default function Payment() {
         ],
       };
 
-      localStorage.setItem("orders", JSON.stringify([newOrder, ...existingOrders]));
+      localStorage.setItem(
+        "orders",
+        JSON.stringify([newOrder, ...existingOrders])
+      );
+
       localStorage.removeItem("cart");
       localStorage.removeItem("checkoutItems");
       localStorage.removeItem("checkoutSummary");
@@ -144,68 +155,110 @@ export default function Payment() {
   });
 
   return (
-    <div className="min-h-screen bg-gray-100 px-6 py-12">
-      <div className="mx-auto max-w-6xl">
+    <div className="min-h-screen bg-[#f3f4f6] px-6 py-10">
+      <div className="mx-auto max-w-7xl">
         <button
           onClick={() => navigate("/cart")}
-          className="mb-8 flex items-center gap-2 font-bold text-gray-600 hover:text-red-600"
+          className="mb-6 flex items-center gap-2 text-sm font-bold text-gray-600 transition hover:text-red-600"
         >
-          <ArrowLeft size={20} />
+          <ArrowLeft size={18} />
           Kembali ke Keranjang
         </button>
 
-        <h1 className="mb-10 text-5xl font-extrabold text-black">
-          Transaksi Pembayaran
-        </h1>
+        <div className="mb-8">
+          <h1 className="text-5xl font-extrabold text-black">
+            Transaksi Pembayaran
+          </h1>
 
-        <div className="grid gap-8 lg:grid-cols-[1fr_420px]">
+          <p className="mt-3 text-gray-500">
+            Pilih metode pembayaran, upload bukti pembayaran, lalu kirim ke
+            admin untuk dikonfirmasi.
+          </p>
+        </div>
+
+        <div className="grid gap-8 lg:grid-cols-[1fr_430px]">
           <div className="space-y-6">
-            {items.map((item) => (
-              <div
-                key={item.id}
-                className="flex gap-5 rounded-3xl bg-white p-6 shadow-sm"
-              >
-                <img
-                  src={getImageUrl(item.image)}
-                  alt={item.name}
-                  className="h-28 w-28 rounded-2xl bg-gray-100 object-contain"
-                />
+            <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
+              <h2 className="mb-5 text-2xl font-bold">Produk Dipesan</h2>
 
-                <div className="flex-1">
-                  <h2 className="text-2xl font-bold">{item.name}</h2>
+              <div className="space-y-4">
+                {items.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex items-center gap-5 rounded-2xl border border-gray-200 bg-gray-50 p-4"
+                  >
+                    <img
+                      src={getImageUrl(item.image)}
+                      alt={item.name}
+                      className="h-24 w-24 rounded-2xl bg-white object-cover"
+                    />
 
-                  <p className="mt-2 text-gray-500">
-                    Qty: <span className="font-bold">{item.qty}</span>
-                  </p>
+                    <div className="flex-1">
+                      <h3 className="text-xl font-extrabold text-black">
+                        {item.name}
+                      </h3>
 
-                  <p className="mt-2 text-2xl font-bold text-red-600">
-                    {formatRupiah(item.price * item.qty)}
-                  </p>
-                </div>
+                      <p className="mt-1 text-gray-500">
+                        Qty: <span className="font-bold">{item.qty}</span>
+                      </p>
+
+                      <p className="mt-2 text-xl font-extrabold text-red-600">
+                        {formatRupiah(item.price * item.qty)}
+                      </p>
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
+            </div>
 
-            <div className="rounded-3xl bg-white p-6 shadow-sm">
+            <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
               <h2 className="mb-5 text-2xl font-bold">Metode Pembayaran</h2>
 
-              <select
-                value={paymentMethod}
-                onChange={(e) => setPaymentMethod(e.target.value)}
-                className="w-full rounded-xl border border-gray-300 px-4 py-4 text-lg outline-none focus:border-red-600"
-              >
-                <option value="Transfer Bank">Transfer Bank</option>
-                <option value="QRIS">QRIS</option>
-                <option value="E-Wallet">E-Wallet</option>
-              </select>
+              <div className="grid gap-4 md:grid-cols-3">
+                {[
+                  {
+                    label: "Transfer Bank",
+                    icon: <Building2 size={22} />,
+                  },
+                  {
+                    label: "QRIS",
+                    icon: <CreditCard size={22} />,
+                  },
+                  {
+                    label: "E-Wallet",
+                    icon: <Wallet size={22} />,
+                  },
+                ].map((method) => (
+                  <button
+                    key={method.label}
+                    onClick={() => setPaymentMethod(method.label)}
+                    className={`flex items-center justify-center gap-2 rounded-2xl border px-4 py-4 font-bold transition ${
+                      paymentMethod === method.label
+                        ? "border-red-600 bg-red-600 text-white"
+                        : "border-gray-200 bg-gray-50 text-black hover:border-red-400"
+                    }`}
+                  >
+                    {method.icon}
+                    {method.label}
+                  </button>
+                ))}
+              </div>
 
-              <div className="mt-6 rounded-2xl border bg-gray-50 p-6">
+              <div className="mt-6 rounded-2xl border border-gray-300 bg-gray-50 p-6">
                 {paymentMethod === "Transfer Bank" && (
                   <div>
-                    <h3 className="mb-3 text-xl font-bold">Transfer Bank</h3>
-                    <p>Bank BCA</p>
-                    <p>No Rekening: 1234567890</p>
-                    <p>Atas Nama: Warung Camera</p>
-                    <p className="mt-4 font-bold text-red-600">
+                    <div className="mb-4 flex items-center gap-3">
+                      <Building2 className="text-red-600" />
+                      <h3 className="text-xl font-extrabold">Transfer Bank</h3>
+                    </div>
+
+                    <div className="space-y-2 text-gray-700">
+                      <p>Bank BCA</p>
+                      <p>No Rekening: 1234567890</p>
+                      <p>Atas Nama: Warung Camera</p>
+                    </div>
+
+                    <p className="mt-5 text-xl font-extrabold text-red-600">
                       Total: {formatRupiah(total)}
                     </p>
                   </div>
@@ -213,16 +266,24 @@ export default function Payment() {
 
                 {paymentMethod === "QRIS" && (
                   <div>
-                    <h3 className="mb-4 text-xl font-bold">QRIS Payment</h3>
+                    <div className="mb-4 flex items-center gap-3">
+                      <CreditCard className="text-red-600" />
+                      <h3 className="text-xl font-extrabold">QRIS Payment</h3>
+                    </div>
 
-                    <div className="inline-block rounded-3xl border bg-white p-6">
+                    <div className="inline-block rounded-3xl border bg-white p-6 shadow-sm">
                       <QRCode value={qrisValue} size={220} />
+
                       <p className="mt-4 text-center font-bold">
                         WARUNG CAMERA
                       </p>
+
+                      <p className="text-center text-sm text-gray-500">
+                        QRIS Dynamic Payment
+                      </p>
                     </div>
 
-                    <p className="mt-4 font-bold text-red-600">
+                    <p className="mt-5 text-xl font-extrabold text-red-600">
                       Total: {formatRupiah(total)}
                     </p>
                   </div>
@@ -230,11 +291,18 @@ export default function Payment() {
 
                 {paymentMethod === "E-Wallet" && (
                   <div>
-                    <h3 className="mb-3 text-xl font-bold">E-Wallet</h3>
-                    <p>DANA / OVO / GOPAY</p>
-                    <p>Nomor: 08123456789</p>
-                    <p>Atas Nama: Warung Camera</p>
-                    <p className="mt-4 font-bold text-red-600">
+                    <div className="mb-4 flex items-center gap-3">
+                      <Smartphone className="text-red-600" />
+                      <h3 className="text-xl font-extrabold">E-Wallet</h3>
+                    </div>
+
+                    <div className="space-y-2 text-gray-700">
+                      <p>DANA / OVO / GOPAY</p>
+                      <p>Nomor: 08123456789</p>
+                      <p>Atas Nama: Warung Camera</p>
+                    </div>
+
+                    <p className="mt-5 text-xl font-extrabold text-red-600">
                       Total: {formatRupiah(total)}
                     </p>
                   </div>
@@ -242,49 +310,58 @@ export default function Payment() {
               </div>
             </div>
 
-            <div className="rounded-3xl bg-white p-6 shadow-sm">
-              <label className="mb-4 flex items-center gap-2 text-xl font-bold">
+            <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
+              <label className="mb-4 flex items-center gap-2 text-2xl font-bold">
                 <Upload size={24} />
                 Upload Bukti Pembayaran
               </label>
 
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => setPaymentProof(e.target.files?.[0] || null)}
-                className="w-full rounded-xl border border-gray-300 p-4"
-              />
+              <label className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-300 bg-gray-50 px-6 py-10 text-center transition hover:border-red-500 hover:bg-red-50">
+                <Upload className="mb-3 text-red-600" size={34} />
+
+                <p className="font-bold text-gray-800">
+                  Klik untuk upload bukti pembayaran
+                </p>
+
+                <p className="mt-1 text-sm text-gray-500">
+                  Format gambar JPG, PNG, JPEG
+                </p>
+
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) =>
+                    setPaymentProof(e.target.files?.[0] || null)
+                  }
+                  className="hidden"
+                />
+              </label>
 
               {paymentProof ? (
-                <p className="mt-3 font-semibold text-green-600">
+                <div className="mt-4 rounded-2xl bg-green-50 p-4 font-semibold text-green-700">
                   Bukti dipilih: {paymentProof.name}
-                </p>
+                </div>
               ) : (
-                <p className="mt-3 font-semibold text-red-600">
+                <div className="mt-4 rounded-2xl bg-red-50 p-4 font-semibold text-red-600">
                   Bukti pembayaran wajib diupload.
-                </p>
+                </div>
               )}
             </div>
           </div>
 
           <div>
-            <div className="sticky top-32 rounded-3xl bg-white p-8 shadow-sm">
-              <h2 className="mb-8 text-3xl font-bold">Ringkasan Pembayaran</h2>
+            <div className="sticky top-28 rounded-3xl border border-gray-200 bg-white p-7 shadow-sm">
+              <h2 className="mb-6 text-3xl font-extrabold">
+                Ringkasan Pembayaran
+              </h2>
 
-              <div className="space-y-5">
-                <div className="flex justify-between">
-                  <span>Subtotal</span>
-                  <span>{formatRupiah(subtotal)}</span>
-                </div>
+              <div className="rounded-2xl bg-gray-50 p-5">
+                <div className="flex items-center justify-between gap-4">
+                  <span className="w-32 shrink-0 text-base font-bold leading-tight text-gray-700">
+                    Total Pembayaran
+                  </span>
 
-                <div className="flex justify-between">
-                  <span>PPN 11%</span>
-                  <span>{formatRupiah(tax)}</span>
-                </div>
-
-                <div className="flex justify-between border-t pt-5 text-xl font-bold">
-                  <span>Total</span>
-                  <span className="text-3xl text-red-600">
+                  <span className="min-w-0 flex-1 text-right text-2xl font-extrabold leading-tight text-red-600">
                     {formatRupiah(total)}
                   </span>
                 </div>
@@ -293,9 +370,9 @@ export default function Payment() {
               <button
                 onClick={handleSubmitPayment}
                 disabled={loading || !paymentProof}
-                className={`mt-8 flex w-full items-center justify-center gap-2 rounded-2xl py-4 font-bold text-white transition ${
+                className={`mt-6 flex w-full items-center justify-center gap-2 rounded-2xl py-4 font-bold text-white transition ${
                   loading || !paymentProof
-                    ? "bg-gray-400 cursor-not-allowed"
+                    ? "cursor-not-allowed bg-gray-400"
                     : "bg-red-600 hover:bg-red-700"
                 }`}
               >
@@ -303,9 +380,12 @@ export default function Payment() {
                 {loading ? "Mengirim..." : "Kirim Pembayaran"}
               </button>
 
-              <div className="mt-5 flex items-center gap-2 rounded-2xl bg-yellow-50 p-4 text-sm font-semibold text-yellow-700">
-                <CheckCircle2 size={18} />
-                Bukti pembayaran akan dikirim ke admin.
+              <div className="mt-5 flex items-start gap-2 rounded-2xl bg-yellow-50 p-4 text-sm font-semibold text-yellow-700">
+                <CheckCircle2 size={18} className="mt-0.5 shrink-0" />
+
+                <span>
+                  Bukti pembayaran akan dikirim ke admin untuk dikonfirmasi.
+                </span>
               </div>
             </div>
           </div>

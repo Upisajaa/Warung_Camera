@@ -11,7 +11,8 @@ export default function Footer() {
         <div className="grid gap-12 md:grid-cols-4">
           <div>
             <h2 className="mb-6 text-4xl font-black tracking-wide">
-              WARUNG CAMERA
+              WARUNG <br />
+              CAMERA
             </h2>
 
             <p className="text-lg leading-8 text-gray-300">
@@ -24,10 +25,29 @@ export default function Footer() {
             <h3 className="mb-6 text-2xl font-bold">Navigasi</h3>
 
             <ul className="space-y-4 text-gray-300">
-              <li><Link to="/" className="hover:text-red-400">Home</Link></li>
-              <li><Link to="/produk" className="hover:text-red-400">Produk</Link></li>
-              <li><Link to="/tentang" className="hover:text-red-400">Tentang</Link></li>
-              <li><Link to="/kontak" className="hover:text-red-400">Kontak</Link></li>
+              <li>
+                <Link to="/" className="transition hover:text-red-400">
+                  Home
+                </Link>
+              </li>
+
+              <li>
+                <Link to="/produk" className="transition hover:text-red-400">
+                  Produk
+                </Link>
+              </li>
+
+              <li>
+                <Link to="/tentang" className="transition hover:text-red-400">
+                  Tentang
+                </Link>
+              </li>
+
+              <li>
+                <Link to="/kontak" className="transition hover:text-red-400">
+                  Kontak
+                </Link>
+              </li>
             </ul>
           </div>
 
@@ -35,10 +55,32 @@ export default function Footer() {
             <h3 className="mb-6 text-2xl font-bold">Bantuan</h3>
 
             <ul className="space-y-4 text-gray-300">
-              <li><Link to="/pengiriman" className="hover:text-red-400">Pengiriman</Link></li>
-              <li><Link to="/pengembalian" className="hover:text-red-400">Refund</Link></li>
-              <li><Link to="/garansi" className="hover:text-red-400">Garansi</Link></li>
-              <li><Link to="/faq" className="hover:text-red-400">FAQ</Link></li>
+              <li>
+                <Link
+                  to="/pengiriman"
+                  className="transition hover:text-red-400"
+                >
+                  Pengiriman
+                </Link>
+              </li>
+
+              <li>
+                <Link to="/refund" className="transition hover:text-red-400">
+                  Refund
+                </Link>
+              </li>
+
+              <li>
+                <Link to="/garansi" className="transition hover:text-red-400">
+                  Garansi
+                </Link>
+              </li>
+
+              <li>
+                <Link to="/faq" className="transition hover:text-red-400">
+                  FAQ
+                </Link>
+              </li>
             </ul>
           </div>
 
@@ -58,10 +100,10 @@ export default function Footer() {
                 </p>
 
                 <a
-                  href="https://maps.google.com/?q=Bandung"
+                  href="https://maps.google.com/?q=Jl.%20Soekarno%20Hatta%20Bandung"
                   target="_blank"
                   rel="noreferrer"
-                  className="mt-3 inline-block text-sm font-semibold text-red-400 hover:text-red-300"
+                  className="mt-3 inline-block text-sm font-semibold text-red-400 transition hover:text-red-300"
                 >
                   Lihat Lokasi →
                 </a>
@@ -75,7 +117,8 @@ export default function Footer() {
                 href="https://instagram.com"
                 target="_blank"
                 rel="noreferrer"
-                className="flex h-12 w-12 items-center justify-center rounded-full border border-white/20 hover:bg-pink-600"
+                aria-label="Instagram"
+                className="flex h-12 w-12 items-center justify-center rounded-full border border-white/20 transition hover:bg-pink-600"
               >
                 <Instagram size={22} />
               </a>
@@ -84,7 +127,8 @@ export default function Footer() {
                 href="https://tiktok.com"
                 target="_blank"
                 rel="noreferrer"
-                className="flex h-12 w-12 items-center justify-center rounded-full border border-white/20 hover:bg-black"
+                aria-label="TikTok"
+                className="flex h-12 w-12 items-center justify-center rounded-full border border-white/20 transition hover:bg-black"
               >
                 <Music2 size={22} />
               </a>
@@ -93,7 +137,8 @@ export default function Footer() {
                 href="https://wa.me/628123456789"
                 target="_blank"
                 rel="noreferrer"
-                className="flex h-12 w-12 items-center justify-center rounded-full border border-white/20 hover:bg-green-600"
+                aria-label="WhatsApp"
+                className="flex h-12 w-12 items-center justify-center rounded-full border border-white/20 transition hover:bg-green-600"
               >
                 <PhoneCall size={22} />
               </a>
@@ -105,11 +150,11 @@ export default function Footer() {
           <p>© 2026 Warung Camera. All rights reserved.</p>
 
           <div className="flex gap-6">
-            <Link to="/privacy" className="hover:text-red-400">
+            <Link to="/privacy" className="transition hover:text-red-400">
               Kebijakan Privasi
             </Link>
 
-            <Link to="/terms" className="hover:text-red-400">
+            <Link to="/terms" className="transition hover:text-red-400">
               Syarat & Ketentuan
             </Link>
           </div>

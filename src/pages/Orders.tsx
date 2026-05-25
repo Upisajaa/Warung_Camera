@@ -116,8 +116,7 @@ export default function OrdersPage() {
                       </p>
 
                       <p className="mt-3">
-                        Qty:{" "}
-                        <span className="font-bold">{order.qty}</span>
+                        Qty: <span className="font-bold">{order.qty}</span>
                       </p>
 
                       <p className="mt-2 text-red-600 font-bold text-lg">
@@ -191,19 +190,6 @@ export default function OrdersPage() {
                         </div>
                       </div>
                     </div>
-
-                    <button
-                      onClick={() =>
-                        alert(
-                          `Kurir: ${order.courier || "Belum tersedia"}\nResi: ${
-                            order.receipt || "Belum tersedia"
-                          }\nStatus: ${order.status}`
-                        )
-                      }
-                      className="mt-5 bg-black text-white py-3 rounded-2xl font-semibold hover:bg-gray-800 transition"
-                    >
-                      Lacak Paket
-                    </button>
                   </div>
                 </div>
 
