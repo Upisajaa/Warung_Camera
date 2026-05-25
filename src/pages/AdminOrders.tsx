@@ -7,8 +7,19 @@ import {
   MapPin,
   Trash2,
   Save,
+  Eye,
+  CheckCircle2,
+  User,
+  CreditCard,
+  CalendarDays,
 } from "lucide-react";
 import toast from "react-hot-toast";
+
+type Timeline = {
+  title: string;
+  description: string;
+  time: string;
+};
 
 type Order = {
   id: number;
@@ -20,17 +31,14 @@ type Order = {
   qty: number;
   total: number;
   payment: string;
+  paymentProof?: string;
   paymentStatus?: string;
   status: string;
   courier?: string;
   receipt?: string;
   address?: string;
   date: string;
-  timeline?: {
-    title: string;
-    description: string;
-    time: string;
-  }[];
+  timeline?: Timeline[];
 };
 
 export default function AdminOrders() {
@@ -46,12 +54,13 @@ export default function AdminOrders() {
     setOrders(savedOrders);
 
     const initialForm: Record<number, Partial<Order>> = {};
+
     savedOrders.forEach((order: Order) => {
       initialForm[order.id] = {
         courier: order.courier || "",
         receipt: order.receipt || "",
         status: order.status || "Menunggu Diproses",
-        paymentStatus: order.paymentStatus || "Menunggu Pembayaran",
+        paymentStatus: order.paymentStatus || "Menunggu Konfirmasi Admin",
       };
     });
 
@@ -63,21 +72,25 @@ export default function AdminOrders() {
   };
 
   const getStatusIcon = (status: string) => {
-    if (status === "Menunggu Diproses") return <Clock size={18} />;
-    if (status === "Dikemas") return <Package size={18} />;
-    if (status === "Dikirim") return <Truck size={18} />;
-    if (status === "Dalam Perjalanan") return <Truck size={18} />;
-    if (status === "Tiba") return <PackageCheck size={18} />;
-    return <Clock size={18} />;
+    if (status === "Dikemas") return <Package size={15} />;
+    if (status === "Dikirim") return <Truck size={15} />;
+    if (status === "Dalam Perjalanan") return <Truck size={15} />;
+    if (status === "Tiba") return <PackageCheck size={15} />;
+    return <Clock size={15} />;
   };
 
   const getStatusColor = (status: string) => {
-    if (status === "Menunggu Diproses") return "bg-gray-100 text-gray-700";
     if (status === "Dikemas") return "bg-yellow-100 text-yellow-700";
     if (status === "Dikirim") return "bg-blue-100 text-blue-700";
     if (status === "Dalam Perjalanan") return "bg-purple-100 text-purple-700";
     if (status === "Tiba") return "bg-green-100 text-green-700";
     return "bg-gray-100 text-gray-700";
+  };
+
+  const getPaymentColor = (status?: string) => {
+    if (status === "Sudah Dibayar") return "bg-green-100 text-green-700";
+    if (status === "Pembayaran Ditolak") return "bg-red-100 text-red-700";
+    return "bg-yellow-100 text-yellow-700";
   };
 
   const handleChange = (id: number, field: keyof Order, value: string) => {
@@ -96,8 +109,6 @@ export default function AdminOrders() {
     const updatedOrders = orders.map((order) => {
       if (order.id !== id) return order;
 
-      const timeline = order.timeline || [];
-
       return {
         ...order,
         courier: data.courier || "",
@@ -105,7 +116,7 @@ export default function AdminOrders() {
         status: data.status || order.status,
         paymentStatus: data.paymentStatus || order.paymentStatus,
         timeline: [
-          ...timeline,
+          ...(order.timeline || []),
           {
             title: "Update Admin",
             description: `Status: ${data.status || order.status}, Kurir: ${
@@ -119,157 +130,268 @@ export default function AdminOrders() {
 
     setOrders(updatedOrders);
     localStorage.setItem("orders", JSON.stringify(updatedOrders));
-    toast.success("Data pengiriman berhasil disimpan");
+    toast.success("Data pesanan berhasil disimpan");
+  };
+
+  const confirmPayment = (id: number) => {
+    const updatedOrders = orders.map((order) => {
+      if (order.id !== id) return order;
+
+      return {
+        ...order,
+        paymentStatus: "Sudah Dibayar",
+        timeline: [
+          ...(order.timeline || []),
+          {
+            title: "Pembayaran Dikonfirmasi",
+            description: "Admin mengonfirmasi pembayaran user.",
+            time: new Date().toLocaleString("id-ID"),
+          },
+        ],
+      };
+    });
+
+    setOrders(updatedOrders);
+    localStorage.setItem("orders", JSON.stringify(updatedOrders));
+
+    setFormData((prev) => ({
+      ...prev,
+      [id]: {
+        ...prev[id],
+        paymentStatus: "Sudah Dibayar",
+      },
+    }));
+
+    toast.success("Pembayaran berhasil dikonfirmasi");
   };
 
   const deleteOrder = (id: number) => {
     if (!confirm("Hapus pesanan ini?")) return;
 
     const updatedOrders = orders.filter((order) => order.id !== id);
-
     setOrders(updatedOrders);
     localStorage.setItem("orders", JSON.stringify(updatedOrders));
-    toast.success("Pesanan dihapus");
+    toast.success("Pesanan berhasil dihapus");
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 px-8 py-12">
-      <div className="max-w-7xl mx-auto">
-        <div className="mb-10">
-          <h1 className="text-5xl font-extrabold text-gray-900">
+    <div className="min-h-screen bg-[#f3f4f6] px-4 py-8">
+      <div className="mx-auto w-full max-w-[1450px]">
+        <div className="mb-6 flex flex-col gap-2">
+          <h1 className="text-4xl font-extrabold text-gray-900">
             Pesanan User
           </h1>
 
-          <p className="text-gray-500 mt-3 text-lg">
-            Admin mengatur status pesanan, kurir, dan nomor resi paket user.
+          <p className="text-gray-500">
+            Kelola bukti pembayaran, status paket, kurir, dan nomor resi.
           </p>
         </div>
 
         {orders.length === 0 ? (
-          <div className="bg-white rounded-3xl p-16 text-center shadow-md">
-            <h2 className="text-3xl font-bold mb-3">
-              Belum Ada Pesanan User
-            </h2>
-            <p className="text-gray-500">
-              Pesanan akan muncul setelah user checkout produk.
-            </p>
+          <div className="rounded-3xl border border-gray-200 bg-white p-16 text-center shadow-sm">
+            <h2 className="mb-3 text-3xl font-bold">Belum Ada Pesanan</h2>
+            <p className="text-gray-500">Pesanan user akan muncul di sini.</p>
           </div>
         ) : (
           <div className="space-y-6">
             {orders.map((order) => (
               <div
                 key={order.id}
-                className="bg-white rounded-3xl shadow-md border overflow-hidden"
+                className="overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm"
               >
-                <div className="grid md:grid-cols-4 gap-6 p-6">
-                  <div className="flex gap-5">
+                {/* TOP CONTENT */}
+                <div className="grid grid-cols-1 xl:grid-cols-[1.6fr_1fr_1fr_1fr_1fr_1.3fr] border-b border-gray-200">
+                  {/* PRODUCT */}
+                  <div className="flex gap-5 border-b border-gray-200 p-6 xl:border-b-0 xl:border-r">
                     <img
-                      src={order.image}
+                      src={order.image || "https://via.placeholder.com/150"}
                       alt={order.product}
-                      className="w-32 h-32 object-cover rounded-2xl border"
+                      className="h-28 w-28 shrink-0 rounded-2xl border object-cover"
                     />
 
-                    <div>
-                      <h2 className="text-2xl font-bold text-gray-900">
+                    <div className="min-w-0">
+                      <h2 className="truncate text-3xl font-extrabold text-gray-900">
                         {order.product}
                       </h2>
 
-                      <p className="text-gray-500 mt-1">
-                        Harga: {formatRupiah(order.price)}
+                      <p className="mt-2 text-xl font-extrabold text-red-600">
+                        {formatRupiah(order.total)}
                       </p>
 
-                      <p className="mt-2">
+                      <p className="mt-2 text-gray-700">
                         Qty: <span className="font-bold">{order.qty}</span>
                       </p>
 
-                      <p className="mt-2 text-red-600 font-bold text-lg">
-                        {formatRupiah(order.total)}
-                      </p>
+                      <div
+                        className={`mt-4 inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold ${getStatusColor(
+                          order.status
+                        )}`}
+                      >
+                        {getStatusIcon(order.status)}
+                        {order.status}
+                      </div>
                     </div>
                   </div>
 
-                  <div className="flex flex-col justify-center">
-                    <p className="text-gray-500 text-sm">Pembeli</p>
-                    <p className="font-bold text-lg">
+                  {/* BUYER */}
+                  <div className="border-b border-gray-200 p-6 xl:border-b-0 xl:border-r">
+                    <div className="mb-3 flex items-center gap-2 font-semibold text-gray-500">
+                      <User size={17} />
+                      Pembeli
+                    </div>
+
+                    <p className="truncate text-xl font-extrabold text-gray-900">
                       {order.buyerName || "User"}
                     </p>
-                    <p className="text-gray-500 text-sm">
+
+                    <p className="truncate text-sm text-gray-500">
                       {order.buyerEmail || "-"}
                     </p>
-
-                    <p className="text-gray-500 text-sm mt-5">
-                      Metode Pembayaran
-                    </p>
-                    <p className="font-bold text-lg">{order.payment}</p>
-
-                    <p className="text-gray-500 text-sm mt-5">
-                      Tanggal Pesanan
-                    </p>
-                    <p className="font-semibold">{order.date}</p>
                   </div>
 
-                  <div className="flex flex-col justify-center">
+                  {/* PAYMENT */}
+                  <div className="border-b border-gray-200 p-6 xl:border-b-0 xl:border-r">
+                    <div className="mb-3 flex items-center gap-2 font-semibold text-gray-500">
+                      <CreditCard size={17} />
+                      Metode Pembayaran
+                    </div>
+
+                    <p className="text-xl font-extrabold text-gray-900">
+                      {order.payment || "Transfer Bank"}
+                    </p>
+                  </div>
+
+                  {/* DATE */}
+                  <div className="border-b border-gray-200 p-6 xl:border-b-0 xl:border-r">
+                    <div className="mb-3 flex items-center gap-2 font-semibold text-gray-500">
+                      <CalendarDays size={17} />
+                      Tanggal Pesanan
+                    </div>
+
+                    <p className="text-xl font-bold text-gray-900">
+                      {order.date}
+                    </p>
+                  </div>
+
+                  {/* STATUS */}
+                  <div className="border-b border-gray-200 p-6 xl:border-b-0 xl:border-r">
+                    <div className="mb-3 flex items-center gap-2 font-semibold text-gray-500">
+                      <Clock size={17} />
+                      Status
+                    </div>
+
                     <div
-                      className={`inline-flex items-center gap-2 px-4 py-2 rounded-full font-semibold w-fit mb-5 ${getStatusColor(
+                      className={`mb-3 inline-flex rounded-full px-4 py-2 text-sm font-bold ${getStatusColor(
                         order.status
                       )}`}
                     >
-                      {getStatusIcon(order.status)}
                       {order.status}
                     </div>
 
-                    <label className="font-semibold mb-2">Status Paket</label>
+                    <div
+                      className={`inline-flex rounded-full px-4 py-2 text-sm font-bold ${getPaymentColor(
+                        order.paymentStatus
+                      )}`}
+                    >
+                      {order.paymentStatus || "Menunggu Konfirmasi Admin"}
+                    </div>
+                  </div>
+
+                  {/* PAYMENT PROOF */}
+                  <div className="p-6">
+                    <h3 className="mb-3 font-bold">Bukti Pembayaran</h3>
+
+                    {order.paymentProof ? (
+                      <div className="grid grid-cols-[88px_1fr] gap-3">
+                        <img
+                          src={order.paymentProof}
+                          alt="Bukti Pembayaran"
+                          className="h-24 w-24 rounded-xl border object-cover"
+                        />
+
+                        <div className="flex min-w-0 flex-col gap-2">
+                          <a
+                            href={order.paymentProof}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex items-center justify-center gap-2 rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-bold text-black transition hover:bg-gray-100"
+                          >
+                            <Eye size={15} />
+                            Lihat
+                          </a>
+
+                          <button
+                            onClick={() => confirmPayment(order.id)}
+                            className="flex items-center justify-center gap-2 rounded-xl bg-green-600 px-3 py-2 text-sm font-bold text-white transition hover:bg-green-700"
+                          >
+                            <CheckCircle2 size={15} />
+                            Konfirmasi
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-bold text-red-600">
+                        Belum ada bukti
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* FORM CONTROL */}
+                <div className="grid grid-cols-1 gap-5 p-6 md:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_1fr_0.9fr_0.9fr]">
+                  <div>
+                    <label className="mb-2 block font-bold">Status Paket</label>
+
                     <select
                       value={formData[order.id]?.status || order.status}
                       onChange={(e) =>
                         handleChange(order.id, "status", e.target.value)
                       }
-                      className="border rounded-xl px-4 py-3 mb-4"
+                      className="w-full rounded-xl border px-4 py-3 outline-none focus:border-red-500"
                     >
-                      <option value="Menunggu Diproses">
-                        Menunggu Diproses
-                      </option>
+                      <option value="Menunggu Diproses">Menunggu Diproses</option>
                       <option value="Dikemas">Dikemas</option>
                       <option value="Dikirim">Dikirim</option>
-                      <option value="Dalam Perjalanan">
-                        Dalam Perjalanan
-                      </option>
+                      <option value="Dalam Perjalanan">Dalam Perjalanan</option>
                       <option value="Tiba">Tiba</option>
                     </select>
+                  </div>
 
-                    <label className="font-semibold mb-2">
+                  <div>
+                    <label className="mb-2 block font-bold">
                       Status Pembayaran
                     </label>
+
                     <select
                       value={
                         formData[order.id]?.paymentStatus ||
                         order.paymentStatus ||
-                        "Menunggu Pembayaran"
+                        "Menunggu Konfirmasi Admin"
                       }
                       onChange={(e) =>
-                        handleChange(
-                          order.id,
-                          "paymentStatus",
-                          e.target.value
-                        )
+                        handleChange(order.id, "paymentStatus", e.target.value)
                       }
-                      className="border rounded-xl px-4 py-3"
+                      className="w-full rounded-xl border px-4 py-3 outline-none focus:border-red-500"
                     >
-                      <option value="Menunggu Pembayaran">
-                        Menunggu Pembayaran
+                      <option value="Menunggu Konfirmasi Admin">
+                        Menunggu Konfirmasi Admin
                       </option>
                       <option value="Sudah Dibayar">Sudah Dibayar</option>
+                      <option value="Pembayaran Ditolak">
+                        Pembayaran Ditolak
+                      </option>
                     </select>
                   </div>
 
-                  <div className="flex flex-col justify-center">
-                    <label className="font-semibold mb-2">Kurir</label>
+                  <div>
+                    <label className="mb-2 block font-bold">Kurir</label>
+
                     <select
                       value={formData[order.id]?.courier || ""}
                       onChange={(e) =>
                         handleChange(order.id, "courier", e.target.value)
                       }
-                      className="border rounded-xl px-4 py-3 mb-4"
+                      className="w-full rounded-xl border px-4 py-3 outline-none focus:border-red-500"
                     >
                       <option value="">Pilih Kurir</option>
                       <option value="JNE">JNE</option>
@@ -278,8 +400,11 @@ export default function AdminOrders() {
                       <option value="Shopee Express">Shopee Express</option>
                       <option value="POS Indonesia">POS Indonesia</option>
                     </select>
+                  </div>
 
-                    <label className="font-semibold mb-2">Nomor Resi</label>
+                  <div>
+                    <label className="mb-2 block font-bold">Nomor Resi</label>
+
                     <input
                       type="text"
                       placeholder="Contoh: JNT123456789ID"
@@ -287,43 +412,46 @@ export default function AdminOrders() {
                       onChange={(e) =>
                         handleChange(order.id, "receipt", e.target.value)
                       }
-                      className="border rounded-xl px-4 py-3 mb-4"
+                      className="w-full rounded-xl border px-4 py-3 outline-none focus:border-red-500"
                     />
-
-                    <button
-                      onClick={() => saveShipping(order.id)}
-                      className="bg-red-600 text-white py-3 rounded-2xl font-bold hover:bg-red-700 transition flex items-center justify-center gap-2"
-                    >
-                      <Save size={18} />
-                      Simpan Pengiriman
-                    </button>
-
-                    <button
-                      onClick={() => deleteOrder(order.id)}
-                      className="mt-3 bg-black text-white py-3 rounded-2xl font-bold hover:bg-gray-800 transition flex items-center justify-center gap-2"
-                    >
-                      <Trash2 size={18} />
-                      Hapus Pesanan
-                    </button>
                   </div>
+
+                  <button
+                    onClick={() => saveShipping(order.id)}
+                    className="flex h-[50px] items-center justify-center gap-2 self-end rounded-xl bg-red-600 px-4 font-bold text-white transition hover:bg-red-700"
+                  >
+                    <Save size={17} />
+                    Simpan
+                  </button>
+
+                  <button
+                    onClick={() => deleteOrder(order.id)}
+                    className="flex h-[50px] items-center justify-center gap-2 self-end rounded-xl bg-black px-4 font-bold text-white transition hover:bg-gray-800"
+                  >
+                    <Trash2 size={17} />
+                    Hapus
+                  </button>
                 </div>
 
-                <div className="bg-gray-50 border-t px-6 py-4 flex items-center justify-between">
+                {/* FOOTER */}
+                <div className="flex flex-col gap-3 border-t bg-gray-50 px-6 py-4 md:flex-row md:items-center md:justify-between">
                   <div className="flex items-center gap-2">
-                    <MapPin size={18} />
-                    <span>{order.address || "Bandung, Indonesia"}</span>
+                    <MapPin size={18} className="text-red-600" />
+                    <span>
+                      <b>Alamat Pengiriman:</b>{" "}
+                      {order.address || "Bandung, Indonesia"}
+                    </span>
                   </div>
 
-                  <p className="text-gray-500">
-                    Kurir:{" "}
-                    <span className="font-bold">
-                      {order.courier || "Belum dipilih"}
-                    </span>{" "}
-                    | Resi:{" "}
-                    <span className="font-bold">
-                      {order.receipt || "Belum tersedia"}
+                  <div className="flex flex-wrap gap-6 text-gray-500">
+                    <span>
+                      Kurir: <b>{order.courier || "Belum dipilih"}</b>
                     </span>
-                  </p>
+
+                    <span>
+                      Resi: <b>{order.receipt || "Belum tersedia"}</b>
+                    </span>
+                  </div>
                 </div>
               </div>
             ))}

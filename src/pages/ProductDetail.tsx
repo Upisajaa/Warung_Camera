@@ -9,6 +9,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Info,
+  Upload,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import QRCode from "react-qr-code";
@@ -31,6 +32,7 @@ export default function ProductDetail() {
   const [product, setProduct] = useState<Product | null>(null);
   const [qty, setQty] = useState(1);
   const [paymentMethod, setPaymentMethod] = useState("Transfer Bank");
+  const [paymentProof, setPaymentProof] = useState<File | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeImage, setActiveImage] = useState(0);
 
@@ -102,7 +104,7 @@ export default function ProductDetail() {
     toast.success("Produk masuk keranjang");
   };
 
-  const saveOrderToLocalStorage = (total: number) => {
+  const saveOrderToLocalStorage = (total: number, proofUrl: string) => {
     if (!product) return;
 
     const images = getImages(product.image);
@@ -111,37 +113,30 @@ export default function ProductDetail() {
 
     const newOrder = {
       id: Date.now(),
-
       buyerName: currentUser.name || "User",
       buyerEmail: currentUser.email || "-",
-
       productId: product.id,
       product: product.name,
       image: images[0] ? `http://localhost:3000${images[0]}` : "",
-
       price: product.price,
       qty,
       total,
-
       payment: paymentMethod,
-      paymentStatus: "Menunggu Pembayaran",
-
+      paymentProof: proofUrl,
+      paymentStatus: "Menunggu Konfirmasi Admin",
       status: "Menunggu Diproses",
       courier: "",
       receipt: "",
-
-      address: "Bandung, Indonesia",
-
+      address: currentUser.address || "Bandung, Indonesia",
       date: new Date().toLocaleDateString("id-ID", {
         day: "numeric",
         month: "long",
         year: "numeric",
       }),
-
       timeline: [
         {
           title: "Pesanan Dibuat",
-          description: "User berhasil melakukan checkout produk.",
+          description: "User checkout dan mengirim bukti pembayaran.",
           time: new Date().toLocaleString("id-ID"),
         },
       ],
@@ -155,6 +150,7 @@ export default function ProductDetail() {
     if (!product) return;
 
     const total = product.price * qty;
+    const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
 
     if (product.stock <= 0) {
       toast.error("Stok produk habis");
@@ -166,31 +162,41 @@ export default function ProductDetail() {
       return;
     }
 
-    if (
-      !confirm(
-        `Checkout produk ${product.name}?\n\nJumlah: ${qty}\nMetode: ${paymentMethod}\nTotal: ${formatRupiah(total)}`
-      )
-    ) {
+    if (!paymentProof) {
+      toast.error("Upload bukti pembayaran dulu");
       return;
     }
 
+    const confirmCheckout = confirm(
+      `Checkout produk ${product.name}?\n\nJumlah: ${qty}\nMetode: ${paymentMethod}\nTotal: ${formatRupiah(total)}`
+    );
+
+    if (!confirmCheckout) return;
+
     try {
+      const formData = new FormData();
+
+      formData.append(
+        "items",
+        JSON.stringify([
+          {
+            id: product.id,
+            name: product.name,
+            price: product.price,
+            qty,
+          },
+        ])
+      );
+
+      formData.append("userEmail", currentUser.email || "-");
+      formData.append("userName", currentUser.name || "User");
+      formData.append("total", String(total));
+      formData.append("paymentMethod", paymentMethod);
+      formData.append("paymentProof", paymentProof);
+
       const res = await fetch("http://localhost:3000/api/checkout", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          items: [
-            {
-              id: product.id,
-              name: product.name,
-              price: product.price,
-              qty,
-              paymentMethod,
-            },
-          ],
-        }),
+        body: formData,
       });
 
       const data = await res.json();
@@ -200,9 +206,13 @@ export default function ProductDetail() {
         return;
       }
 
-      saveOrderToLocalStorage(total);
+      const proofUrl = data.order?.paymentProof
+        ? `http://localhost:3000${data.order.paymentProof}`
+        : "";
 
-      toast.success("Checkout berhasil");
+      saveOrderToLocalStorage(total, proofUrl);
+
+      toast.success("Checkout berhasil, bukti pembayaran terkirim ke admin");
 
       alert(`
 CHECKOUT BERHASIL
@@ -212,12 +222,13 @@ Jumlah: ${qty}
 Metode: ${paymentMethod}
 Total: ${formatRupiah(total)}
 
-Status: Menunggu Diproses
-Resi akan muncul setelah admin mengirim paket.
+Bukti pembayaran sudah dikirim ke admin.
+Status: Menunggu Konfirmasi Admin
       `);
 
       fetchProduct();
       setQty(1);
+      setPaymentProof(null);
     } catch {
       toast.error("Gagal terhubung ke server");
     }
@@ -333,28 +344,28 @@ Resi akan muncul setelah admin mengirim paket.
           </h2>
 
           <div className="bg-red-50 border border-red-200 rounded-2xl p-4 mb-5 shadow-sm">
-          <div className="flex items-start gap-3 mb-3">
-            <div className="w-8 h-8 min-w-[32px] rounded-full bg-red-600 text-white flex items-center justify-center shadow">
-              <Info size={16} />
+            <div className="flex items-start gap-3 mb-3">
+              <div className="w-8 h-8 rounded-full bg-red-600 text-white flex items-center justify-center shadow">
+                <Info size={16} />
+              </div>
+
+              <div>
+                <h3 className="text-lg font-bold text-red-600 mb-1">
+                  Keterangan Produk
+                </h3>
+
+                <p className="text-gray-500 text-xs">
+                  Detail kondisi dan informasi tambahan produk
+                </p>
+              </div>
             </div>
 
-            <div>
-              <h3 className="text-lg font-bold text-red-600 leading-none mb-1">
-                Keterangan Produk
-              </h3>
-
-              <p className="text-gray-500 text-xs">
-                Detail kondisi dan informasi tambahan produk
+            <div className="bg-white rounded-xl border border-red-100 px-4 py-3">
+              <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-line">
+                {product.description || "Tidak ada keterangan produk."}
               </p>
             </div>
           </div>
-
-          <div className="bg-white rounded-xl border border-red-100 px-4 py-3">
-            <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-line">
-              {product.description || "Tidak ada keterangan produk."}
-            </p>
-          </div>
-        </div>
 
           <div className="grid grid-cols-2 gap-4 mb-6">
             <div className="bg-gray-100 p-4 rounded-xl">
@@ -467,6 +478,32 @@ Resi akan muncul setelah admin mengirim paket.
             </div>
           </div>
 
+          <div className="mb-6 rounded-2xl border border-gray-300 bg-white p-5">
+            <label className="mb-3 flex items-center gap-2 text-lg font-bold text-black">
+              <Upload size={22} />
+              Upload Bukti Pembayaran
+            </label>
+
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => setPaymentProof(e.target.files?.[0] || null)}
+              className="w-full rounded-xl border border-gray-300 bg-white p-3"
+            />
+
+            {!paymentProof && (
+              <p className="mt-2 text-sm font-semibold text-red-600">
+                Bukti pembayaran wajib diupload sebelum checkout.
+              </p>
+            )}
+
+            {paymentProof && (
+              <p className="mt-2 text-sm font-semibold text-green-600">
+                Bukti pembayaran dipilih: {paymentProof.name}
+              </p>
+            )}
+          </div>
+
           <div className="bg-red-50 border border-red-200 rounded-2xl p-5 mb-6">
             <div className="flex justify-between text-lg">
               <span>Total Pembayaran</span>
@@ -488,8 +525,12 @@ Resi akan muncul setelah admin mengirim paket.
 
             <button
               onClick={handleCheckout}
-              disabled={product.stock <= 0}
-              className="flex-1 bg-red-600 text-white py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-3 hover:bg-red-700 disabled:opacity-50"
+              disabled={product.stock <= 0 || !paymentProof}
+              className={`flex-1 py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-3 text-white ${
+                product.stock <= 0 || !paymentProof
+                  ? "bg-gray-400 cursor-not-allowed"
+                  : "bg-red-600 hover:bg-red-700"
+              }`}
             >
               <CreditCard size={22} />
               Checkout
@@ -504,4 +545,4 @@ Resi akan muncul setelah admin mengirim paket.
       </div>
     </div>
   );
-}
+}   

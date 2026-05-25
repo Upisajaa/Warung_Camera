@@ -41,9 +41,9 @@ const formatProduct = (product: any) => ({
 });
 
 const getOrCreateCategory = async (name: string) => {
-  const categoryName = name || "DSLR";
+  const categoryName = String(name || "DSLR").trim();
 
-  let category = await prisma.category.findUnique({
+  let category = await prisma.category.findFirst({
     where: {
       name: categoryName,
     },
@@ -229,7 +229,7 @@ app.get("/api/users", async (req, res) => {
 });
 
 /* =========================
-   PROFILE DATABASE
+   PROFILE
 ========================= */
 app.get("/api/profile/:email", async (req, res) => {
   try {
@@ -341,38 +341,43 @@ app.get("/api/products/:id", async (req, res) => {
 
 app.post("/api/products", upload.array("images", 10), async (req, res) => {
   try {
-    const {
-      name,
-      price,
-      stock,
-      brand,
-      category,
-      condition,
-      description,
-    } = req.body;
+    const { name, price, stock, brand, category, condition, description } =
+      req.body;
 
-    if (!name || !price || !stock) {
+    if (!name || price === undefined || stock === undefined) {
       return res.status(400).json({
         success: false,
         message: "Nama, harga, dan stok wajib diisi",
       });
     }
 
-    const categoryData = await getOrCreateCategory(category || "DSLR");
+    const priceNumber = Number(price);
+    const stockNumber = Number(stock);
+
+    if (Number.isNaN(priceNumber) || Number.isNaN(stockNumber)) {
+      return res.status(400).json({
+        success: false,
+        message: "Harga dan stok harus berupa angka",
+      });
+    }
+
+    const categoryName = category || "DSLR";
+    const categoryData = await getOrCreateCategory(categoryName);
 
     const files = req.files as Express.Multer.File[];
 
-    const imagePaths = files
-      ? files.map((file) => `/uploads/${file.filename}`)
-      : [];
+    const imagePaths =
+      files && files.length > 0
+        ? files.map((file) => `/uploads/${file.filename}`)
+        : [];
 
     const product = await prisma.product.create({
       data: {
         name: String(name),
-        price: Number(price),
-        stock: Number(stock),
+        price: priceNumber,
+        stock: stockNumber,
         brand: brand || "",
-        category: category || "DSLR",
+        category: categoryName,
         condition: condition || "NEW",
         description: description || "",
         image: JSON.stringify(imagePaths),
@@ -409,7 +414,18 @@ app.put("/api/products/:id", upload.array("images", 10), async (req, res) => {
       oldImage,
     } = req.body;
 
-    const categoryData = await getOrCreateCategory(category || "DSLR");
+    const priceNumber = Number(price);
+    const stockNumber = Number(stock);
+
+    if (Number.isNaN(priceNumber) || Number.isNaN(stockNumber)) {
+      return res.status(400).json({
+        success: false,
+        message: "Harga dan stok harus berupa angka",
+      });
+    }
+
+    const categoryName = category || "DSLR";
+    const categoryData = await getOrCreateCategory(categoryName);
 
     const files = req.files as Express.Multer.File[];
 
@@ -424,10 +440,10 @@ app.put("/api/products/:id", upload.array("images", 10), async (req, res) => {
       where: { id },
       data: {
         name: String(name),
-        price: Number(price),
-        stock: Number(stock),
+        price: priceNumber,
+        stock: stockNumber,
         brand: brand || "",
-        category: category || "DSLR",
+        category: categoryName,
         condition: condition || "NEW",
         description: description || "",
         image: imageData,
@@ -471,20 +487,49 @@ app.delete("/api/products/:id", async (req, res) => {
 });
 
 /* =========================
-   CHECKOUT
+   CHECKOUT + BUKTI PEMBAYARAN
 ========================= */
-app.post("/api/checkout", async (req, res) => {
+app.post("/api/checkout", upload.single("paymentProof"), async (req, res) => {
   try {
-    const { items } = req.body;
+    const { items, userEmail, userName, total, paymentMethod } = req.body;
 
-    if (!items || items.length === 0) {
+    if (!items) {
+      return res.status(400).json({
+        success: false,
+        message: "Data checkout kosong",
+      });
+    }
+
+    let parsedItems: any[] = [];
+
+    try {
+      parsedItems = JSON.parse(items);
+    } catch {
+      return res.status(400).json({
+        success: false,
+        message: "Format items tidak valid",
+      });
+    }
+
+    if (!parsedItems || parsedItems.length === 0) {
       return res.status(400).json({
         success: false,
         message: "Keranjang kosong",
       });
     }
 
-    for (const item of items) {
+    const file = req.file as Express.Multer.File | undefined;
+
+    if (!file) {
+      return res.status(400).json({
+        success: false,
+        message: "Bukti pembayaran wajib diupload",
+      });
+    }
+
+    const paymentProofPath = `/uploads/${file.filename}`;
+
+    for (const item of parsedItems) {
       const product = await prisma.product.findUnique({
         where: {
           id: Number(item.id),
@@ -507,27 +552,30 @@ app.post("/api/checkout", async (req, res) => {
 
       const newStock = product.stock - Number(item.qty);
 
-      if (newStock <= 0) {
-        await prisma.product.delete({
-          where: {
-            id: Number(item.id),
-          },
-        });
-      } else {
-        await prisma.product.update({
-          where: {
-            id: Number(item.id),
-          },
-          data: {
-            stock: newStock,
-          },
-        });
-      }
+      await prisma.product.update({
+        where: {
+          id: Number(item.id),
+        },
+        data: {
+          stock: newStock,
+        },
+      });
     }
 
     res.json({
       success: true,
-      message: "Checkout berhasil",
+      message: "Checkout berhasil, bukti pembayaran terkirim ke admin",
+      order: {
+        id: Date.now(),
+        userEmail: userEmail || "-",
+        userName: userName || "User",
+        items: parsedItems,
+        total: Number(total),
+        paymentMethod: paymentMethod || "Transfer Bank",
+        paymentProof: paymentProofPath,
+        status: "Menunggu Konfirmasi Admin",
+        createdAt: new Date(),
+      },
     });
   } catch (error) {
     console.log(error);

@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { motion } from "framer-motion";
 
 export default function Home() {
   const categories = [
@@ -34,165 +35,284 @@ export default function Home() {
     },
   ];
 
+  const fadeUp = {
+    hidden: { opacity: 0, y: 70 },
+    show: {
+      opacity: 1,
+      y: 0,
+      transition: { duration: 0.8, ease: "easeOut" },
+    },
+  };
+
+  const fadeLeft = {
+    hidden: { opacity: 0, x: -90 },
+    show: {
+      opacity: 1,
+      x: 0,
+      transition: { duration: 0.8, ease: "easeOut" },
+    },
+  };
+
+  const fadeRight = {
+    hidden: { opacity: 0, x: 90 },
+    show: {
+      opacity: 1,
+      x: 0,
+      transition: { duration: 0.8, ease: "easeOut" },
+    },
+  };
+
+  const cardContainer = {
+    hidden: {},
+    show: {
+      transition: {
+        staggerChildren: 0.12,
+      },
+    },
+  };
+
   return (
-    <div className="min-h-screen bg-[#f5f5f5]">
-      {/* HERO */}
-      <section className="max-w-7xl mx-auto px-6 py-16">
-        <div className="bg-white rounded-[40px] shadow-lg overflow-hidden grid md:grid-cols-2 items-center">
-          
-          {/* LEFT */}
-          <div className="p-12">
-            <h1 className="text-6xl md:text-7xl font-serif italic leading-tight mb-8">
+    <div className="min-h-screen bg-[#efefef] text-black">
+      {/* HERO SECTION */}
+      <section className="max-w-7xl mx-auto px-6 py-10">
+        <div className="grid md:grid-cols-2 overflow-hidden rounded-[40px] border border-gray-300 bg-white shadow-sm">
+          <motion.div
+            variants={fadeLeft}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ amount: 0.35 }}
+            className="flex flex-col justify-center bg-[#f5f5f5] p-12 md:p-16"
+          >
+            <h1 className="mb-8 font-serif text-6xl italic leading-tight md:text-7xl">
               Capture
               <br />
               Perfection.
             </h1>
 
-            <p className="text-gray-600 text-xl leading-relaxed mb-10">
+            <p className="mb-10 text-xl leading-relaxed text-gray-600">
               Warung Camera adalah marketplace kamera dan perlengkapan fotografi
-              untuk kebutuhan profesional maupun hobi. Temukan DSLR,
-              mirrorless, drone, action cam, lensa, dan aksesoris dengan
-              transaksi aman serta pengiriman ke seluruh Indonesia.
+              untuk kebutuhan profesional maupun hobi.
             </p>
 
             <Link
               to="/produk"
-              className="inline-block bg-red-600 hover:bg-red-700 text-white font-bold px-10 py-5 rounded-full text-lg transition"
+              className="inline-block w-fit rounded-full bg-red-600 px-10 py-5 text-lg font-bold text-white transition hover:bg-red-700"
             >
               Jelajahi Produk
             </Link>
-          </div>
+          </motion.div>
 
-          {/* RIGHT */}
-          <div className="h-full">
-            <img
+          <motion.div
+            variants={fadeRight}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ amount: 0.35 }}
+            className="relative bg-black overflow-hidden"
+          >
+            <motion.img
               src="https://images.unsplash.com/photo-1516035069371-29a1b244cc32?q=80&w=1200"
               alt="Camera Hero"
-              className="w-full h-full object-cover"
+              className="h-full w-full object-cover opacity-90 brightness-75 contrast-125"
+              animate={{ scale: [1, 1.06, 1] }}
+              transition={{
+                duration: 8,
+                repeat: Infinity,
+                ease: "easeInOut",
+              }}
             />
-          </div>
+
+            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+
+            <motion.div
+              className="absolute top-0 left-[-40%] h-full w-[40%] rotate-12 bg-white/20 blur-3xl"
+              animate={{ x: ["0%", "300%"] }}
+              transition={{
+                duration: 7,
+                repeat: Infinity,
+                ease: "linear",
+              }}
+            />
+          </motion.div>
         </div>
       </section>
 
-      {/* CATEGORY */}
+      {/* KATEGORI */}
       <section className="max-w-7xl mx-auto px-6 pb-16">
-        <div className="mb-10">
-          <h2 className="text-5xl font-extrabold mb-3">
+        <motion.div
+          variants={fadeUp}
+          initial="hidden"
+          whileInView="show"
+          viewport={{ amount: 0.3 }}
+          className="mb-10 flex items-center justify-between"
+        >
+          <h2 className="text-5xl font-extrabold text-black">
             Kategori Produk
           </h2>
-        </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
+          <Link
+            to="/produk"
+            className="rounded-full border border-gray-300 bg-white px-6 py-3 font-semibold transition hover:bg-black hover:text-white"
+          >
+            Lihat Semua
+          </Link>
+        </motion.div>
+
+        <motion.div
+          variants={cardContainer}
+          initial="hidden"
+          whileInView="show"
+          viewport={{ amount: 0.25 }}
+          className="grid grid-cols-2 gap-6 md:grid-cols-3 lg:grid-cols-6"
+        >
           {categories.map((category) => (
-            <Link
-              key={category.name}
-              to={`/produk?category=${category.name}`}
-              className="bg-white rounded-3xl shadow-md border hover:shadow-xl hover:-translate-y-2 transition duration-300 overflow-hidden"
-            >
-              <div className="h-48 overflow-hidden">
-                <img
-                  src={category.image}
-                  alt={category.name}
-                  className="w-full h-full object-cover"
-                />
-              </div>
+            <motion.div key={category.name} variants={fadeUp}>
+              <Link
+                to={`/produk?category=${category.name}`}
+                className="block overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm transition duration-300 hover:-translate-y-2 hover:shadow-xl"
+              >
+                <div className="h-48 overflow-hidden">
+                  <motion.img
+                    src={category.image}
+                    alt={category.name}
+                    className="h-full w-full object-cover"
+                    whileHover={{ scale: 1.08 }}
+                    transition={{ duration: 0.4 }}
+                  />
+                </div>
 
-              <div className="p-5 text-center">
-                <h3 className="text-2xl font-bold">
-                  {category.name}
-                </h3>
-              </div>
-            </Link>
+                <div className="p-5 text-center">
+                  <h3 className="text-2xl font-bold text-black">
+                    {category.name}
+                  </h3>
+                </div>
+              </Link>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
       </section>
 
       {/* BANNER */}
       <section className="max-w-7xl mx-auto px-6 pb-16">
-        <div className="bg-black rounded-[40px] overflow-hidden grid md:grid-cols-2 items-center">
-          
-          <div className="p-12">
-            <p className="text-red-500 font-bold text-lg mb-4">
+        <div className="grid overflow-hidden rounded-[40px] bg-[#2f2f2f] md:grid-cols-2">
+          <motion.div
+            variants={fadeLeft}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ amount: 0.3 }}
+            className="flex flex-col justify-center p-12"
+          >
+            <p className="mb-4 text-lg font-bold text-red-500">
               WARUNG CAMERA STORE
             </p>
 
-            <h2 className="text-white text-5xl font-extrabold leading-tight mb-6">
+            <h2 className="mb-6 text-5xl font-extrabold leading-tight text-white">
               Peralatan fotografi
               <br />
               untuk setiap momen.
             </h2>
 
-            <p className="text-gray-300 text-lg leading-relaxed mb-8">
-              Temukan berbagai pilihan kamera dan perlengkapan fotografi
-              dari brand populer untuk kebutuhan konten, traveling,
-              hingga produksi profesional.
+            <p className="mb-8 text-lg leading-relaxed text-gray-300">
+              Temukan berbagai pilihan kamera dan perlengkapan fotografi dari
+              brand populer dengan kualitas terbaik.
             </p>
 
             <Link
               to="/produk"
-              className="inline-block bg-red-600 hover:bg-red-700 text-white font-bold px-10 py-5 rounded-full text-lg transition"
+              className="inline-block w-fit rounded-full bg-red-600 px-10 py-5 text-lg font-bold text-white transition hover:bg-red-700"
             >
               Lihat Produk
             </Link>
-          </div>
+          </motion.div>
 
-          <div className="h-full">
-            <img
+          <motion.div
+            variants={fadeRight}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ amount: 0.3 }}
+            className="relative overflow-hidden bg-black"
+          >
+            <motion.img
               src="https://images.unsplash.com/photo-1502920917128-1aa500764cbd?q=80&w=1200"
               alt="Premium Camera"
-              className="w-full h-full object-cover"
+              className="h-full w-full object-cover opacity-95 brightness-75 contrast-125"
+              animate={{ scale: [1, 1.05, 1] }}
+              transition={{
+                duration: 8,
+                repeat: Infinity,
+                ease: "easeInOut",
+              }}
             />
-          </div>
+
+            <div className="absolute inset-0 bg-gradient-to-r from-black/30 via-transparent to-black/20" />
+          </motion.div>
         </div>
       </section>
 
-      {/* FEATURES */}
+      {/* FITUR */}
       <section className="max-w-7xl mx-auto px-6 pb-20">
-        <h2 className="text-5xl font-extrabold mb-12 text-center">
+        <motion.h2
+          variants={fadeUp}
+          initial="hidden"
+          whileInView="show"
+          viewport={{ amount: 0.3 }}
+          className="mb-12 text-center text-5xl font-extrabold text-black"
+        >
           Kenapa Belanja di Warung Camera?
-        </h2>
+        </motion.h2>
 
-        <div className="grid md:grid-cols-3 gap-8">
-          
-          <div className="bg-white rounded-3xl p-10 shadow-md border">
-            <div className="text-5xl mb-6">🚚</div>
+        <motion.div
+          variants={cardContainer}
+          initial="hidden"
+          whileInView="show"
+          viewport={{ amount: 0.25 }}
+          className="grid gap-8 md:grid-cols-3"
+        >
+          <motion.div
+            variants={fadeUp}
+            className="rounded-3xl border border-gray-200 bg-white p-10 shadow-sm"
+          >
+            <div className="mb-6 text-5xl">🚚</div>
 
-            <h3 className="text-3xl font-bold mb-4">
+            <h3 className="mb-4 text-3xl font-bold text-black">
               Pengiriman Seluruh Indonesia
             </h3>
 
-            <p className="text-gray-600 text-lg leading-relaxed">
-              Produk dikirim menggunakan jasa ekspedisi terpercaya dengan
-              nomor resi dan status pengiriman realtime.
+            <p className="text-lg leading-relaxed text-gray-600">
+              Produk dikirim menggunakan jasa ekspedisi terpercaya dan aman.
             </p>
-          </div>
+          </motion.div>
 
-          <div className="bg-white rounded-3xl p-10 shadow-md border">
-            <div className="text-5xl mb-6">💳</div>
+          <motion.div
+            variants={fadeUp}
+            className="rounded-3xl border border-gray-200 bg-white p-10 shadow-sm"
+          >
+            <div className="mb-6 text-5xl">💳</div>
 
-            <h3 className="text-3xl font-bold mb-4">
+            <h3 className="mb-4 text-3xl font-bold text-black">
               Pembayaran Fleksibel
             </h3>
 
-            <p className="text-gray-600 text-lg leading-relaxed">
-              Mendukung pembayaran melalui transfer bank, QRIS,
-              e-wallet, dan kartu kredit.
+            <p className="text-lg leading-relaxed text-gray-600">
+              Mendukung transfer bank, QRIS, e-wallet, dan kartu kredit.
             </p>
-          </div>
+          </motion.div>
 
-          <div className="bg-white rounded-3xl p-10 shadow-md border">
-            <div className="text-5xl mb-6">📸</div>
+          <motion.div
+            variants={fadeUp}
+            className="rounded-3xl border border-gray-200 bg-white p-10 shadow-sm"
+          >
+            <div className="mb-6 text-5xl">📸</div>
 
-            <h3 className="text-3xl font-bold mb-4">
+            <h3 className="mb-4 text-3xl font-bold text-black">
               Produk Berkualitas
             </h3>
 
-            <p className="text-gray-600 text-lg leading-relaxed">
-              Menyediakan kamera dan perlengkapan fotografi pilihan
-              untuk pemula hingga profesional.
+            <p className="text-lg leading-relaxed text-gray-600">
+              Kamera dan perlengkapan fotografi pilihan untuk pemula hingga
+              profesional.
             </p>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       </section>
     </div>
   );

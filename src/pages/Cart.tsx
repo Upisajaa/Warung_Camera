@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate, Link } from "react-router-dom";
 import {
   Trash2,
   Plus,
@@ -6,8 +7,6 @@ import {
   ShoppingBag,
   ArrowRight,
 } from "lucide-react";
-
-import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
 
 type CartItem = {
@@ -21,12 +20,13 @@ type CartItem = {
 };
 
 export default function Cart() {
+  const navigate = useNavigate();
+
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const savedCart = JSON.parse(localStorage.getItem("cart") || "[]");
-    setCart(savedCart);
+    setCart(Array.isArray(savedCart) ? savedCart : []);
   }, []);
 
   const saveCart = (newCart: CartItem[]) => {
@@ -34,11 +34,13 @@ export default function Cart() {
     localStorage.setItem("cart", JSON.stringify(newCart));
   };
 
+  const formatRupiah = (value: number) => {
+    return `Rp ${Number(value).toLocaleString("id-ID")}`;
+  };
+
   const removeFromCart = (id: number) => {
     const newCart = cart.filter((item) => item.id !== id);
-
     saveCart(newCart);
-
     toast.success("Produk dihapus dari keranjang");
   };
 
@@ -53,18 +55,15 @@ export default function Cart() {
     }
 
     const newCart = cart.map((item) =>
-      item.id === id
-        ? {
-            ...item,
-            qty,
-          }
-        : item
+      item.id === id ? { ...item, qty } : item
     );
 
     saveCart(newCart);
   };
 
   const clearCart = () => {
+    if (!confirm("Kosongkan semua keranjang?")) return;
+
     saveCart([]);
     toast.success("Keranjang dikosongkan");
   };
@@ -75,215 +74,179 @@ export default function Cart() {
   );
 
   const tax = subtotal * 0.11;
-
   const total = subtotal + tax;
 
-  const checkout = async () => {
-    try {
-      setLoading(true);
-
-      const res = await fetch("http://localhost:3000/api/checkout", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          items: cart,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok || data.success === false) {
-        toast.error(data.message || "Checkout gagal");
-        return;
-      }
-
-      toast.success("Checkout berhasil");
-
-      saveCart([]);
-
-      setTimeout(() => {
-        window.location.href = "/produk";
-      }, 1500);
-    } catch (error) {
-      console.log(error);
-
-      toast.error("Gagal terhubung ke server");
-    } finally {
-      setLoading(false);
+  const handleConfirmOrder = () => {
+    if (cart.length === 0) {
+      toast.error("Keranjang masih kosong");
+      return;
     }
+
+    localStorage.setItem("checkoutItems", JSON.stringify(cart));
+    localStorage.setItem(
+      "checkoutSummary",
+      JSON.stringify({
+        subtotal,
+        tax,
+        total,
+      })
+    );
+
+    toast.success("Pesanan dikonfirmasi");
+    navigate("/payment");
   };
 
   if (cart.length === 0) {
     return (
-      <div className="max-w-7xl mx-auto px-6 py-32 text-center">
-        <div className="w-24 h-24 bg-black rounded-full flex items-center justify-center mx-auto mb-8">
-          <ShoppingBag className="w-10 h-10 text-white/40" />
+      <div className="min-h-screen bg-gray-100 px-6 py-32">
+        <div className="mx-auto max-w-7xl text-center">
+          <div className="mx-auto mb-8 flex h-24 w-24 items-center justify-center rounded-full bg-black">
+            <ShoppingBag className="h-10 w-10 text-white" />
+          </div>
+
+          <h1 className="mb-4 text-5xl font-black uppercase italic">
+            Keranjang Kosong
+          </h1>
+
+          <p className="mb-10 text-gray-500">
+            Belum ada produk di keranjang.
+          </p>
+
+          <Link
+            to="/produk"
+            className="inline-flex items-center gap-2 rounded-full bg-black px-8 py-4 font-bold uppercase text-white transition hover:bg-red-600"
+          >
+            Lihat Produk
+            <ArrowRight className="h-4 w-4" />
+          </Link>
         </div>
-
-        <h1 className="text-5xl font-black uppercase italic mb-4">
-          Keranjang Kosong
-        </h1>
-
-        <p className="text-gray-500 mb-10">
-          Belum ada produk di keranjang
-        </p>
-
-        <Link
-          to="/produk"
-          className="inline-flex items-center gap-2 bg-black text-white px-8 py-4 rounded-full font-bold uppercase"
-        >
-          Lihat Produk
-          <ArrowRight className="w-4 h-4" />
-        </Link>
       </div>
     );
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-6 py-12">
-      <h1 className="text-5xl font-bold mb-12">
-        Keranjang Belanja
-      </h1>
+    <div className="min-h-screen bg-gray-100 px-6 py-12">
+      <div className="mx-auto max-w-7xl">
+        <h1 className="mb-12 text-5xl font-extrabold text-black">
+          Keranjang Belanja
+        </h1>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-        {/* CART */}
-        <div className="lg:col-span-2 space-y-6">
-          {cart.map((item) => {
-            const imageUrl = item.image
-              ? `http://localhost:3000${item.image}`
-              : "https://placehold.co/100x100";
+        <div className="grid grid-cols-1 gap-10 lg:grid-cols-3">
+          <div className="space-y-6 lg:col-span-2">
+            {cart.map((item) => {
+              const imageUrl = item.image?.startsWith("http")
+                ? item.image
+                : item.image
+                ? `http://localhost:3000${item.image}`
+                : "https://placehold.co/120x120";
 
-            return (
-              <div
-                key={item.id}
-                className="bg-white rounded-3xl shadow p-6 flex gap-6"
-              >
-                <div className="w-32 h-32 bg-gray-100 rounded-2xl flex items-center justify-center p-4">
-                  <img
-                    src={imageUrl}
-                    alt={item.name}
-                    className="w-full h-full object-contain"
-                  />
-                </div>
+              return (
+                <div
+                  key={item.id}
+                  className="flex flex-col gap-6 rounded-3xl bg-white p-6 shadow-sm md:flex-row"
+                >
+                  <div className="flex h-32 w-32 shrink-0 items-center justify-center rounded-2xl bg-gray-100 p-4">
+                    <img
+                      src={imageUrl}
+                      alt={item.name}
+                      className="h-full w-full object-contain"
+                    />
+                  </div>
 
-                <div className="flex-1">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h2 className="text-2xl font-bold">
-                        {item.name}
+                  <div className="flex-1">
+                    <div className="flex items-start justify-between gap-5">
+                      <div>
+                        <h2 className="text-2xl font-bold text-black">
+                          {item.name}
+                        </h2>
+
+                        <p className="mt-2 text-xl font-bold text-red-600">
+                          {formatRupiah(item.price)}
+                        </p>
+
+                        <p className="mt-1 text-gray-500">
+                          Pembayaran: {item.payment || "-"}
+                        </p>
+
+                        <p className="text-gray-500">Qty: {item.qty}</p>
+                      </div>
+
+                      <button
+                        onClick={() => removeFromCart(item.id)}
+                        className="text-red-600 transition hover:scale-110"
+                      >
+                        <Trash2 />
+                      </button>
+                    </div>
+
+                    <div className="mt-6 flex items-center justify-between">
+                      <div className="flex items-center gap-4 rounded-xl bg-gray-100 px-4 py-2">
+                        <button
+                          onClick={() => updateQty(item.id, item.qty - 1)}
+                          className="hover:text-red-600"
+                        >
+                          <Minus />
+                        </button>
+
+                        <span className="text-lg font-bold">{item.qty}</span>
+
+                        <button
+                          onClick={() => updateQty(item.id, item.qty + 1)}
+                          className="hover:text-red-600"
+                        >
+                          <Plus />
+                        </button>
+                      </div>
+
+                      <h2 className="text-2xl font-bold text-black">
+                        {formatRupiah(Number(item.price) * item.qty)}
                       </h2>
-
-                      <p className="text-red-600 font-bold text-xl mt-2">
-                        Rp{" "}
-                        {Number(item.price).toLocaleString("id-ID")}
-                      </p>
-
-                      <p className="text-gray-500 mt-1">
-                        Pembayaran: {item.payment}
-                      </p>
-
-                      <p className="text-gray-500">
-                        Qty: {item.qty}
-                      </p>
                     </div>
-
-                    <button
-                      onClick={() => removeFromCart(item.id)}
-                      className="text-red-600"
-                    >
-                      <Trash2 />
-                    </button>
-                  </div>
-
-                  <div className="flex items-center justify-between mt-6">
-                    <div className="flex items-center gap-4 bg-gray-100 px-4 py-2 rounded-xl">
-                      <button
-                        onClick={() =>
-                          updateQty(item.id, item.qty - 1)
-                        }
-                      >
-                        <Minus />
-                      </button>
-
-                      <span className="font-bold text-lg">
-                        {item.qty}
-                      </span>
-
-                      <button
-                        onClick={() =>
-                          updateQty(item.id, item.qty + 1)
-                        }
-                      >
-                        <Plus />
-                      </button>
-                    </div>
-
-                    <h2 className="text-2xl font-bold">
-                      Rp{" "}
-                      {(
-                        Number(item.price) * item.qty
-                      ).toLocaleString("id-ID")}
-                    </h2>
                   </div>
                 </div>
-              </div>
-            );
-          })}
-
-          <button
-            onClick={clearCart}
-            className="text-red-600 font-bold uppercase"
-          >
-            Kosongkan Keranjang
-          </button>
-        </div>
-
-        {/* SUMMARY */}
-        <div>
-          <div className="bg-white rounded-3xl shadow p-8 sticky top-32">
-            <h2 className="text-3xl font-bold mb-8">
-              Ringkasan Pesanan
-            </h2>
-
-            <div className="space-y-5">
-              <div className="flex justify-between">
-                <span>Subtotal</span>
-
-                <span>
-                  Rp {subtotal.toLocaleString("id-ID")}
-                </span>
-              </div>
-
-              <div className="flex justify-between">
-                <span>PPN 11%</span>
-
-                <span>
-                  Rp {tax.toLocaleString("id-ID")}
-                </span>
-              </div>
-
-              <div className="border-t pt-5 flex justify-between items-center">
-                <span className="font-bold text-xl">
-                  Total
-                </span>
-
-                <span className="text-3xl text-red-600 font-bold">
-                  Rp {total.toLocaleString("id-ID")}
-                </span>
-              </div>
-            </div>
+              );
+            })}
 
             <button
-              onClick={checkout}
-              disabled={loading}
-              className="w-full bg-black text-white py-4 rounded-2xl font-bold mt-8 hover:bg-red-600 transition"
+              onClick={clearCart}
+              className="font-bold uppercase text-red-600 transition hover:text-red-700"
             >
-              {loading
-                ? "Memproses..."
-                : "Konfirmasi Pesanan"}
+              Kosongkan Keranjang
             </button>
+          </div>
+
+          <div>
+            <div className="sticky top-32 rounded-3xl bg-white p-8 shadow-sm">
+              <h2 className="mb-8 text-3xl font-bold text-black">
+                Ringkasan Pesanan
+              </h2>
+
+              <div className="space-y-5">
+                <div className="flex justify-between">
+                  <span>Subtotal</span>
+                  <span>{formatRupiah(subtotal)}</span>
+                </div>
+
+                <div className="flex justify-between">
+                  <span>PPN 11%</span>
+                  <span>{formatRupiah(tax)}</span>
+                </div>
+
+                <div className="flex items-center justify-between border-t pt-5">
+                  <span className="text-xl font-bold">Total</span>
+                  <span className="text-3xl font-bold text-red-600">
+                    {formatRupiah(total)}
+                  </span>
+                </div>
+              </div>
+
+              <button
+                onClick={handleConfirmOrder}
+                className="mt-8 w-full rounded-2xl bg-red-600 py-4 font-bold text-white transition hover:bg-red-700"
+              >
+                Konfirmasi Pesanan
+              </button>
+            </div>
           </div>
         </div>
       </div>

@@ -8,6 +8,7 @@ import Home from "./pages/Home";
 import Products from "./pages/Products";
 import ProductDetail from "./pages/ProductDetail";
 import Cart from "./pages/Cart";
+import Payment from "./pages/Payment";
 import AuthPage from "./pages/Auth";
 import AdminDashboard from "./pages/Admin";
 import OrdersPage from "./pages/Orders";
@@ -34,12 +35,12 @@ export default function App() {
             <Route path="/produk/:id" element={<ProductDetail />} />
 
             <Route path="/cart" element={<Cart />} />
+            <Route path="/payment" element={<Payment />} />
 
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/login" element={<AuthPage />} />
 
             <Route path="/profile" element={<Profile />} />
-
             <Route path="/orders" element={<OrdersPage />} />
 
             <Route path="/admin" element={<AdminDashboard />} />

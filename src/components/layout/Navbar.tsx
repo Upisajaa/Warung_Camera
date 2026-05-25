@@ -17,12 +17,7 @@ export default function Navbar() {
   useEffect(() => {
     const loadUser = () => {
       const savedUser = localStorage.getItem("user");
-
-      if (savedUser) {
-        setUser(JSON.parse(savedUser));
-      } else {
-        setUser(null);
-      }
+      setUser(savedUser ? JSON.parse(savedUser) : null);
     };
 
     loadUser();
@@ -42,9 +37,7 @@ export default function Navbar() {
     navigate("/login");
   };
 
-  const isActive = (path: string) => {
-    return location.pathname === path;
-  };
+  const isActive = (path: string) => location.pathname === path;
 
   const getProfileImage = () => {
     if (user?.image && user.image.startsWith("data:image")) {
@@ -63,26 +56,38 @@ export default function Navbar() {
   };
 
   return (
-    <header className="w-full bg-white border-b border-black sticky top-0 z-50">
-      <div className="max-w-[1700px] mx-auto px-10 py-5 flex items-center justify-between gap-8">
-        <Link to="/" className="flex items-center gap-5 shrink-0">
+    <header className="sticky top-0 z-50 w-full border-b border-gray-200 bg-white/95 backdrop-blur-md">
+      <div className="mx-auto flex max-w-[1500px] items-center justify-between gap-6 px-8 py-4">
+        {/* LOGO */}
+        <Link
+          to="/"
+          className="flex items-center gap-3 shrink-0"
+        >
           <img
             src="/logos.png"
             alt="Warung Camera"
-            className="w-24 h-24 object-contain"
+            className="h-14 w-14 object-contain"
           />
 
-          <h1 className="text-4xl font-extrabold tracking-wide leading-none">
-            WARUNG <br />
-            <span className="text-red-600">CAMERA</span>
+          <h1 className="leading-none tracking-wide">
+            <span className="block text-3xl font-black text-black">
+              WARUNG
+            </span>
+
+            <span className="block text-3xl font-black text-red-600">
+              CAMERA
+            </span>
           </h1>
         </Link>
 
-        <nav className="hidden md:flex items-center gap-10 text-2xl font-medium">
+        {/* MENU */}
+        <nav className="hidden lg:flex items-center gap-8 text-[18px] font-semibold">
           <Link
             to="/"
             className={`transition ${
-              isActive("/") ? "text-red-600" : "hover:text-red-600"
+              isActive("/")
+                ? "text-red-600"
+                : "text-gray-700 hover:text-red-600"
             }`}
           >
             Home
@@ -91,9 +96,9 @@ export default function Navbar() {
           <Link
             to="/produk"
             className={`transition ${
-              isActive("/produk") || isActive("/products")
+              isActive("/produk")
                 ? "text-red-600"
-                : "hover:text-red-600"
+                : "text-gray-700 hover:text-red-600"
             }`}
           >
             Produk
@@ -104,7 +109,7 @@ export default function Navbar() {
             className={`transition ${
               isActive("/about") || isActive("/tentang")
                 ? "text-red-600"
-                : "hover:text-red-600"
+                : "text-gray-700 hover:text-red-600"
             }`}
           >
             Tentang
@@ -113,75 +118,86 @@ export default function Navbar() {
           {user && user.role !== "ADMIN" && (
             <Link
               to="/orders"
-              className={`transition flex items-center gap-2 ${
-                isActive("/orders") ? "text-red-600" : "hover:text-red-600"
+              className={`flex items-center gap-2 transition ${
+                isActive("/orders")
+                  ? "text-red-600"
+                  : "text-gray-700 hover:text-red-600"
               }`}
             >
-              <Package size={24} />
+              <Package size={20} />
               Pesanan Saya
             </Link>
           )}
         </nav>
 
-        <div className="flex items-center gap-5 shrink-0">
+        {/* RIGHT SIDE */}
+        <div className="flex items-center gap-3 shrink-0">
+          {/* CART */}
           <button
             onClick={() => navigate("/cart")}
-            className={`transition ${
-              isActive("/cart") ? "text-red-600" : "hover:text-red-600"
+            className={`relative rounded-full p-2 transition ${
+              isActive("/cart")
+                ? "bg-red-50 text-red-600"
+                : "text-gray-700 hover:bg-gray-100 hover:text-red-600"
             }`}
           >
-            <ShoppingCart size={38} />
+            <ShoppingCart size={28} />
           </button>
 
           {user ? (
             <>
+              {/* ADMIN BUTTON */}
               {user.role === "ADMIN" && (
                 <>
                   <button
                     onClick={() => navigate("/admin")}
-                    className="bg-red-600 text-white px-6 py-3 rounded-full font-bold text-lg hover:bg-red-700 transition flex items-center gap-2"
+                    className="flex items-center gap-2 rounded-full border border-red-200 bg-red-50 px-5 py-2.5 text-sm font-bold text-red-600 transition hover:bg-red-600 hover:text-white"
                   >
-                    <LayoutDashboard size={20} />
+                    <LayoutDashboard size={18} />
                     Dashboard
                   </button>
 
                   <button
                     onClick={() => navigate("/admin/orders")}
-                    className="bg-black text-white px-6 py-3 rounded-full font-bold text-lg hover:bg-gray-800 transition flex items-center gap-2"
+                    className="flex items-center gap-2 rounded-full border border-gray-300 bg-gray-100 px-5 py-2.5 text-sm font-bold text-gray-800 transition hover:bg-gray-200"
                   >
-                    <ClipboardList size={20} />
+                    <ClipboardList size={18} />
                     Pesanan User
                   </button>
                 </>
               )}
 
+              {/* PROFILE */}
               <Link
                 to="/profile"
-                className="flex items-center gap-3 hover:text-red-600 transition"
+                className="flex items-center gap-3 rounded-full px-2 py-1 transition hover:bg-gray-100"
               >
                 <img
                   src={getProfileImage()}
                   alt="Profile"
-                  className="w-12 h-12 rounded-full object-cover border-2 border-gray-300 bg-white shadow-sm"
+                  className="h-11 w-11 rounded-full border border-gray-300 bg-white object-cover shadow-sm"
                 />
 
-                <span className="text-2xl font-semibold">
-                  {user.name || "User"}
+                <span className="max-w-[150px] truncate text-lg font-semibold text-gray-800">
+                  {user.role === "ADMIN"
+                    ? "Admin"
+                    : user.name || "User"}
                 </span>
               </Link>
 
+              {/* LOGOUT */}
               <button
                 onClick={handleLogout}
-                className="bg-black text-white px-6 py-3 rounded-full font-bold text-lg flex items-center gap-2 hover:bg-gray-800 transition"
+                className="flex items-center gap-2 rounded-full border border-gray-300 bg-white px-5 py-2.5 text-sm font-bold text-gray-800 transition hover:border-red-500 hover:bg-red-50 hover:text-red-600"
               >
-                <LogOut size={22} />
+                <LogOut size={18} />
                 Logout
               </button>
             </>
           ) : (
             <button
               onClick={() => navigate("/login")}
-              className="border border-black px-8 py-3 rounded-full text-xl hover:bg-black hover:text-white transition"
+              className="rounded-full border border-red-600 px-6 py-2.5 text-base font-bold text-red-600 transition hover:bg-red-600 hover:text-white"
             >
               Login
             </button>
