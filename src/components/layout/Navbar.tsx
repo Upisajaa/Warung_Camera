@@ -6,7 +6,9 @@ import {
   Package,
   LayoutDashboard,
   ClipboardList,
+  Camera,
 } from "lucide-react";
+import toast from "react-hot-toast";
 
 export default function Navbar() {
   const navigate = useNavigate();
@@ -34,10 +36,27 @@ export default function Navbar() {
   const handleLogout = () => {
     localStorage.removeItem("user");
     setUser(null);
+    window.dispatchEvent(new Event("userChanged"));
     navigate("/login");
   };
 
+  const handleSellClick = () => {
+    if (!user) {
+      toast.error("Silakan login terlebih dahulu");
+      navigate("/login");
+      return;
+    }
+
+    navigate("/sell");
+  };
+
   const isActive = (path: string) => location.pathname === path;
+
+  const isProductActive =
+    location.pathname === "/produk" ||
+    location.pathname === "/products" ||
+    location.pathname.startsWith("/produk/") ||
+    location.pathname.startsWith("/product/");
 
   const getProfileImage = () => {
     if (user?.image && user.image.startsWith("data:image")) {
@@ -58,11 +77,7 @@ export default function Navbar() {
   return (
     <header className="sticky top-0 z-50 w-full border-b border-gray-200 bg-white/95 backdrop-blur-md">
       <div className="mx-auto flex max-w-[1500px] items-center justify-between gap-6 px-8 py-4">
-        {/* LOGO */}
-        <Link
-          to="/"
-          className="flex items-center gap-3 shrink-0"
-        >
+        <Link to="/" className="flex shrink-0 items-center gap-3">
           <img
             src="/logos.png"
             alt="Warung Camera"
@@ -73,15 +88,13 @@ export default function Navbar() {
             <span className="block text-3xl font-black text-black">
               WARUNG
             </span>
-
             <span className="block text-3xl font-black text-red-600">
               CAMERA
             </span>
           </h1>
         </Link>
 
-        {/* MENU */}
-        <nav className="hidden lg:flex items-center gap-8 text-[18px] font-semibold">
+        <nav className="hidden items-center gap-7 text-[18px] font-semibold lg:flex">
           <Link
             to="/"
             className={`transition ${
@@ -96,13 +109,28 @@ export default function Navbar() {
           <Link
             to="/produk"
             className={`transition ${
-              isActive("/produk")
+              isProductActive
                 ? "text-red-600"
                 : "text-gray-700 hover:text-red-600"
             }`}
           >
             Produk
           </Link>
+
+          {user?.role !== "ADMIN" && (
+            <button
+              type="button"
+              onClick={handleSellClick}
+              className={`flex items-center gap-2 transition ${
+                isActive("/sell")
+                  ? "text-red-600"
+                  : "text-gray-700 hover:text-red-600"
+              }`}
+            >
+              <Camera size={20} />
+              Jual Kamera
+            </button>
+          )}
 
           <Link
             to="/about"
@@ -130,10 +158,9 @@ export default function Navbar() {
           )}
         </nav>
 
-        {/* RIGHT SIDE */}
-        <div className="flex items-center gap-3 shrink-0">
-          {/* CART */}
+        <div className="flex shrink-0 items-center gap-3">
           <button
+            type="button"
             onClick={() => navigate("/cart")}
             className={`relative rounded-full p-2 transition ${
               isActive("/cart")
@@ -146,10 +173,10 @@ export default function Navbar() {
 
           {user ? (
             <>
-              {/* ADMIN BUTTON */}
               {user.role === "ADMIN" && (
                 <>
                   <button
+                    type="button"
                     onClick={() => navigate("/admin")}
                     className="flex items-center gap-2 rounded-full border border-red-200 bg-red-50 px-5 py-2.5 text-sm font-bold text-red-600 transition hover:bg-red-600 hover:text-white"
                   >
@@ -158,6 +185,7 @@ export default function Navbar() {
                   </button>
 
                   <button
+                    type="button"
                     onClick={() => navigate("/admin/orders")}
                     className="flex items-center gap-2 rounded-full border border-gray-300 bg-gray-100 px-5 py-2.5 text-sm font-bold text-gray-800 transition hover:bg-gray-200"
                   >
@@ -167,7 +195,6 @@ export default function Navbar() {
                 </>
               )}
 
-              {/* PROFILE */}
               <Link
                 to="/profile"
                 className="flex items-center gap-3 rounded-full px-2 py-1 transition hover:bg-gray-100"
@@ -179,14 +206,12 @@ export default function Navbar() {
                 />
 
                 <span className="max-w-[150px] truncate text-lg font-semibold text-gray-800">
-                  {user.role === "ADMIN"
-                    ? "Admin"
-                    : user.name || "User"}
+                  {user.role === "ADMIN" ? "Admin" : user.name || "User"}
                 </span>
               </Link>
 
-              {/* LOGOUT */}
               <button
+                type="button"
                 onClick={handleLogout}
                 className="flex items-center gap-2 rounded-full border border-gray-300 bg-white px-5 py-2.5 text-sm font-bold text-gray-800 transition hover:border-red-500 hover:bg-red-50 hover:text-red-600"
               >
@@ -196,6 +221,7 @@ export default function Navbar() {
             </>
           ) : (
             <button
+              type="button"
               onClick={() => navigate("/login")}
               className="rounded-full border border-red-600 px-6 py-2.5 text-base font-bold text-red-600 transition hover:bg-red-600 hover:text-white"
             >

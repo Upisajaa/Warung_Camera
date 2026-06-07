@@ -92,15 +92,15 @@ export default function Footer() {
 
               <div>
                 <p className="leading-7">
-                  Jl. Soekarno Hatta No. 12
+                  Permata Kencana Resindence, Blok. H No.4, Rancamulya, Kec. Pameungpeuk
                   <br />
-                  Bandung, Jawa Barat
+                  Kabupaten Bandung, Jawa Barat 40357
                   <br />
                   Indonesia
                 </p>
 
                 <a
-                  href="https://maps.google.com/?q=Jl.%20Soekarno%20Hatta%20Bandung"
+                  href="https://maps.app.goo.gl/zuLpB6AveLMCQwmC8"
                   target="_blank"
                   rel="noreferrer"
                   className="mt-3 inline-block text-sm font-semibold text-red-400 transition hover:text-red-300"
@@ -134,7 +134,7 @@ export default function Footer() {
               </a>
 
               <a
-                href="https://wa.me/628123456789"
+                href="https://wa.me/6285294849915"
                 target="_blank"
                 rel="noreferrer"
                 aria-label="WhatsApp"

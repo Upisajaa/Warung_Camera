@@ -110,7 +110,7 @@ export default function Home() {
             className="relative bg-black overflow-hidden"
           >
             <motion.img
-              src="https://images.unsplash.com/photo-1516035069371-29a1b244cc32?q=80&w=1200"
+              src="RICOH GRIIIx URBAN EDITIONavailable in our shop and online shop warungcamera bandungBUY NOW !!!.webp"
               alt="Camera Hero"
               className="h-full w-full object-cover opacity-90 brightness-75 contrast-125"
               animate={{ scale: [1, 1.06, 1] }}
@@ -232,7 +232,7 @@ export default function Home() {
             className="relative overflow-hidden bg-black"
           >
             <motion.img
-              src="https://images.unsplash.com/photo-1502920917128-1aa500764cbd?q=80&w=1200"
+              src="NEW STOCK RICOH GR IIIx buat para penyuka hunting street photography cocok banget nih pake kame.webp"
               alt="Premium Camera"
               className="h-full w-full object-cover opacity-95 brightness-75 contrast-125"
               animate={{ scale: [1, 1.05, 1] }}

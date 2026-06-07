@@ -121,7 +121,7 @@ export default function About() {
 
               {/* IMAGE */}
               <motion.img
-                src="https://images.unsplash.com/photo-1516035069371-29a1b244cc32?q=80&w=1400&auto=format&fit=crop"
+                src="DSCF9036.JPG"
                 alt="Dark Camera"
                 className="w-full h-[650px] object-cover brightness-75 contrast-125"
                 animate={{
@@ -187,7 +187,7 @@ export default function About() {
             viewport={{ amount: 0.3 }}
           >
             <img
-              src="https://images.unsplash.com/photo-1495707902641-75cac588d2e9?q=80&w=1400&auto=format&fit=crop"
+              src="DSCF9038.JPG"
               alt="Photography Studio"
               className="rounded-[35px] shadow-xl h-[520px] object-cover w-full"
             />
