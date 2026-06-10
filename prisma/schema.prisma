@@ -36,7 +36,7 @@ model User {
 
 model Category {
   id       Int       @id @default(autoincrement())
-  name     String
+  name     String    @unique
   icon     String?
 
   products Product[]
@@ -60,19 +60,18 @@ model Product {
 
   rating      Decimal? @db.Decimal(2, 1)
 
-  categoryId  Int      @map("category_id")
-
-  category    String   @default("DSLR")
+  categoryId   Int     @map("category_id")
+  categoryName String  @default("DSLR") @map("category")
 
   condition   String   @default("NEW")
 
   createdAt   DateTime @default(now()) @map("created_at")
 
-  Category    Category    @relation(fields: [categoryId], references: [id])
+  category    Category @relation(fields: [categoryId], references: [id])
 
-  Cart        Cart[]
-  OrderItem   OrderItem[]
-  Wishlist    Wishlist[]
+  carts       Cart[]
+  orderItems  OrderItem[]
+  wishlists   Wishlist[]
 
   @@map("products")
 }
@@ -100,7 +99,7 @@ model Order {
 
   userId          Int      @map("user_id")
 
-  totalPrice      Decimal  @default(0) @map("total_price")
+  totalPrice      Decimal  @default(0) @map("total_price") @db.Decimal(12, 2)
 
   status          String   @default("Menunggu Diproses")
 

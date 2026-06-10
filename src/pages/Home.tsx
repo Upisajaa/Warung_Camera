@@ -6,7 +6,7 @@ export default function Home() {
     {
       name: "DSLR",
       image:
-        "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?q=80&w=600",
+        "dslr.jpeg",
     },
     {
       name: "Mirrorless",
@@ -16,22 +16,22 @@ export default function Home() {
     {
       name: "Action Cam",
       image:
-        "https://images.unsplash.com/photo-1526178613552-2b45c6c302f0?q=80&w=600",
+        "WhatsApp Image 2026-06-08 at 19.17.00.jpeg",
     },
     {
       name: "Drone",
       image:
-        "https://images.unsplash.com/photo-1473968512647-3e447244af8f?q=80&w=600",
+        "drone.jpeg",
     },
     {
       name: "Lensa",
       image:
-        "https://images.unsplash.com/photo-1516724562728-afc824a36e84?q=80&w=600",
+        "LENSADSLR.jpeg",
     },
     {
       name: "Aksesoris",
       image:
-        "https://images.unsplash.com/photo-1510127034890-ba27508e9f1c?q=80&w=600",
+        "aksesoris.jpeg",
     },
   ];
 
@@ -110,7 +110,7 @@ export default function Home() {
             className="relative bg-black overflow-hidden"
           >
             <motion.img
-              src="https://images.unsplash.com/photo-1516035069371-29a1b244cc32?q=80&w=1200"
+              src="RICOH GRIIIx URBAN EDITIONavailable in our shop and online shop warungcamera bandungBUY NOW !!!.webp"
               alt="Camera Hero"
               className="h-full w-full object-cover opacity-90 brightness-75 contrast-125"
               animate={{ scale: [1, 1.06, 1] }}
@@ -232,7 +232,7 @@ export default function Home() {
             className="relative overflow-hidden bg-black"
           >
             <motion.img
-              src="https://images.unsplash.com/photo-1502920917128-1aa500764cbd?q=80&w=1200"
+              src="NEW STOCK RICOH GR IIIx buat para penyuka hunting street photography cocok banget nih pake kame.webp"
               alt="Premium Camera"
               className="h-full w-full object-cover opacity-95 brightness-75 contrast-125"
               animate={{ scale: [1, 1.05, 1] }}

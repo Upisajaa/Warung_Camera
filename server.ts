@@ -1,12 +1,22 @@
+import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import multer from "multer";
 import fs from "fs";
 import path from "path";
+import nodemailer from "nodemailer";
 import { PrismaClient, Role } from "@prisma/client";
 
 const app = express();
 const prisma = new PrismaClient();
+
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+});
 
 const uploadDir = path.join(process.cwd(), "public", "uploads");
 
@@ -34,10 +44,19 @@ const upload = multer({
   },
 });
 
+const otpStore = new Map<
+  string,
+  {
+    code: string;
+    expiresAt: number;
+  }
+>();
+
 const formatProduct = (product: any) => ({
   ...product,
   price: Number(product.price),
   rating: product.rating ? Number(product.rating) : null,
+  category: product.categoryName || product.category || "DSLR",
 });
 
 const getOrCreateCategory = async (name: string) => {
@@ -60,21 +79,96 @@ const getOrCreateCategory = async (name: string) => {
   return category;
 };
 
+const generateOtp = () => {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+};
+
 app.get("/", (req, res) => {
   res.send("Warung Camera API is running");
 });
 
 /* =========================
-   REGISTER
+   SEND OTP REGISTER TO GMAIL
+========================= */
+app.post("/api/send-otp", async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email wajib diisi",
+      });
+    }
+
+    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+      return res.status(500).json({
+        success: false,
+        message: "EMAIL_USER atau EMAIL_PASS belum diatur di .env",
+      });
+    }
+
+    const cleanEmail = String(email).toLowerCase();
+
+    const existingUser = await prisma.user.findUnique({
+      where: { email: cleanEmail },
+    });
+
+    if (existingUser) {
+      return res.status(409).json({
+        success: false,
+        message: "Email sudah terdaftar",
+      });
+    }
+
+    const otp = generateOtp();
+
+    otpStore.set(cleanEmail, {
+      code: otp,
+      expiresAt: Date.now() + 5 * 60 * 1000,
+    });
+
+    await transporter.sendMail({
+      from: `"Warung Camera" <${process.env.EMAIL_USER}>`,
+      to: cleanEmail,
+      subject: "Kode OTP Verifikasi Warung Camera",
+      html: `
+        <div style="font-family: Arial, sans-serif; padding: 24px;">
+          <h2>Verifikasi Akun Warung Camera</h2>
+          <p>Gunakan kode OTP berikut untuk menyelesaikan registrasi:</p>
+          <h1 style="letter-spacing: 8px; color: #dc2626;">${otp}</h1>
+          <p>Kode ini berlaku selama 5 menit.</p>
+          <p>Jangan berikan kode ini kepada siapa pun.</p>
+        </div>
+      `,
+    });
+
+    console.log(`OTP untuk ${cleanEmail}: ${otp}`);
+
+    res.json({
+      success: true,
+      message: "Kode OTP berhasil dikirim ke Gmail",
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      success: false,
+      message: "Gagal mengirim OTP ke Gmail",
+    });
+  }
+});
+
+/* =========================
+   REGISTER WITH OTP
 ========================= */
 app.post("/api/register", async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, otp } = req.body;
 
-    if (!name || !email || !password) {
+    if (!name || !email || !password || !otp) {
       return res.status(400).json({
         success: false,
-        message: "Nama, email, dan password wajib diisi",
+        message: "Nama, email, password, dan OTP wajib diisi",
       });
     }
 
@@ -86,6 +180,8 @@ app.post("/api/register", async (req, res) => {
     }
 
     const cleanEmail = String(email).toLowerCase();
+
+    
 
     const existingUser = await prisma.user.findUnique({
       where: { email: cleanEmail },
@@ -107,6 +203,7 @@ app.post("/api/register", async (req, res) => {
       },
     });
 
+
     res.status(201).json({
       success: true,
       message: "Register berhasil",
@@ -126,7 +223,7 @@ app.post("/api/register", async (req, res) => {
 ========================= */
 app.post("/api/google-auth", async (req, res) => {
   try {
-    const { name, email } = req.body;
+    const { name, email, image } = req.body;
 
     if (!email) {
       return res.status(400).json({
@@ -148,6 +245,14 @@ app.post("/api/google-auth", async (req, res) => {
           email: cleanEmail,
           password: "GOOGLE_ACCOUNT",
           role: Role.USER,
+          image: image || null,
+        },
+      });
+    } else if (image && !user.image) {
+      user = await prisma.user.update({
+        where: { email: cleanEmail },
+        data: {
+          image,
         },
       });
     }
@@ -172,6 +277,13 @@ app.post("/api/google-auth", async (req, res) => {
 app.post("/api/login", async (req, res) => {
   try {
     const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Email dan password wajib diisi",
+      });
+    }
 
     const cleanEmail = String(email).toLowerCase();
 
@@ -377,7 +489,7 @@ app.post("/api/products", upload.array("images", 10), async (req, res) => {
         price: priceNumber,
         stock: stockNumber,
         brand: brand || "",
-        category: categoryName,
+        categoryName: categoryName,
         condition: condition || "NEW",
         description: description || "",
         image: JSON.stringify(imagePaths),
@@ -443,7 +555,7 @@ app.put("/api/products/:id", upload.array("images", 10), async (req, res) => {
         price: priceNumber,
         stock: stockNumber,
         brand: brand || "",
-        category: categoryName,
+        categoryName: categoryName,
         condition: condition || "NEW",
         description: description || "",
         image: imageData,
