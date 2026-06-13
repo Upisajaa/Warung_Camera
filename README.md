@@ -217,26 +217,6 @@ Password : admin123
 
 ---
 
-## 📸 Screenshot
-
-### Landing Page
-
-Tambahkan screenshot halaman utama di sini.
-
-### Login
-
-Tambahkan screenshot halaman login di sini.
-
-### Dashboard Admin
-
-Tambahkan screenshot dashboard admin di sini.
-
-### Produk
-
-Tambahkan screenshot halaman produk di sini.
-
----
-
 ## 📌 API Endpoint
 
 ### Authentication
