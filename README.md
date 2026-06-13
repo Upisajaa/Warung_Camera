@@ -173,9 +173,9 @@ dengan konfigurasi Firebase milik Anda.
 Masukkan pada:
 
 ```tsx
-const SERVICE_ID = "service_xxxxx";
-const TEMPLATE_ID = "template_xxxxx";
-const PUBLIC_KEY = "xxxxxxxxxxxxx";
+  const SERVICE_ID = "service_itoh16t";
+  const TEMPLATE_ID = "template_0q6kv2j";
+  const PUBLIC_KEY = "LdeGXuEjz3Obkm-mv";
 ```
 
 ---
